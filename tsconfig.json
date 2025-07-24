@@ -8,8 +8,8 @@
     "allowSyntheticDefaultImports": true,
     "target": "ESNext",
     "sourceMap": true,
-    "rootDir": "./src",
-    "outDir": "./dist",
+    "rootDir": "src",
+    "outDir": "dist",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -39,5 +39,6 @@
     "paths": {
       "@shared/*": ["src/shared/*"]
     }
-  }
+  },
+  "include": ["src/**/*", "prisma/**/*"]
 }
