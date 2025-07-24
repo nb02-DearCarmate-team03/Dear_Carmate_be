@@ -20,7 +20,6 @@
   "ignorePatterns": ["node_modules/", "tsconfig.json", "dist"],
   "rules": {
     "semi": "error",
-    //"no-console": "off",
     "prettier/prettier": [
       "error",
       {
@@ -38,7 +37,14 @@
       }
     ],
     "lines-between-class-members": ["error", "always", { "exceptAfterSingleLine": true }],
-    "@typescript-eslint/no-explicit-any": "off"
+    "@typescript-eslint/no-explicit-any": "off",
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ]
   },
   "settings": {
     "import/resolver": {
