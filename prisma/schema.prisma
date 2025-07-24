@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -195,14 +195,14 @@ model Upload {
 
 model Meeting {
   id         Int      @id @default(autoincrement())
-  date       DateTime 
-  contractId Int 
+  date       DateTime
+  contractId Int
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
- 
-  alarms Alarm[] 
+
+  alarms Alarm[]
 
   @@index([contractId])
   @@map("meetings")
@@ -210,8 +210,8 @@ model Meeting {
 
 model Alarm {
   id        Int      @id @default(autoincrement())
-  time      DateTime 
-  meetingId Int 
+  time      DateTime
+  meetingId Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
