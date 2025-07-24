@@ -1,4 +1,12 @@
+<<<<<<< HEAD
 /node_modules
 /generated/prisma
 .env
 dist/
+=======
+/node_modules
+/generated/prisma
+.env
+dist/
+/src/generated/prisma
+>>>>>>> f5c51781247e99f59759bfd9a0b7971cd6490d4e

@@ -10,17 +10,17 @@
     "eslint:recommended"
   ],
   "parserOptions": {
-    "ecmaVersion": 2020,
+    "ecmaVersion": 6,
     "sourceType": "module"
   },
   "env": {
     "browser": true,
-    "node": true,
-    "es2021": true
+    "node": true
   },
-  "ignorePatterns": ["node_modules/", "dist/", "tsconfig.json"],
+  "ignorePatterns": ["node_modules/", "tsconfig.json", "dist"],
   "rules": {
     "semi": "error",
+    //"no-console": "off",
     "prettier/prettier": [
       "error",
       {
@@ -37,23 +37,8 @@
         "tsx": "never"
       }
     ],
-    "lines-between-class-members": [
-      "error",
-      "always",
-      {
-        "exceptAfterSingleLine": true
-      }
-    ],
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": [
-      "warn",
-      {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
-      }
-    ],
-    "no-unused-vars": "off",
-    "no-console": "off"
+    "lines-between-class-members": ["error", "always", { "exceptAfterSingleLine": true }],
+    "@typescript-eslint/no-explicit-any": "off"
   },
   "settings": {
     "import/resolver": {
