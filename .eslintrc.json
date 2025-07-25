@@ -38,7 +38,8 @@
       }
     ],
     "lines-between-class-members": ["error", "always", { "exceptAfterSingleLine": true }],
-    "@typescript-eslint/no-explicit-any": "off"
+    "@typescript-eslint/no-explicit-any": "off",
+    "no-underscore-dangle": "off"
   },
   "settings": {
     "import/resolver": {

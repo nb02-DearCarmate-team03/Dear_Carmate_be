@@ -1,4 +1,10 @@
-import { CompanyOutputDto, CreateCompanyDto } from './dto/company.dto';
+import { Prisma } from '@prisma/client';
+import { CompanyOutputDto, CreateCompanyDto } from './dto/create-company.dto';
+import {
+  CompanyListOutputDto,
+  CompanyListQueryDto,
+  FindManyCompanyOptions,
+} from './dto/get-company.dto';
 import CompanyRepository from './repository';
 
 export default class CompanyService {
@@ -24,6 +30,47 @@ export default class CompanyService {
       companyName: newCompany.companyName,
       companyCode: newCompany.companyCode,
       userCount: newCompany.userCount,
+    };
+  }
+
+  static async getCompanyList(query: CompanyListQueryDto): Promise<CompanyListOutputDto> {
+    const { page, pageSize } = query;
+
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+
+    const whereClause: Prisma.CompanyWhereInput = {};
+    if (query.searchBy === 'companyName' && query.keyword) {
+      whereClause.companyName = {
+        contains: query.keyword,
+        mode: 'insensitive',
+      };
+    }
+
+    const findOptions: FindManyCompanyOptions = {
+      skip,
+      take,
+      where: whereClause,
+      orderBy: { id: 'asc' },
+    };
+
+    const totalItemCount = await CompanyRepository.countAllCompanies(whereClause);
+    const companies = await CompanyRepository.findManyCompany(findOptions);
+
+    const companyOutputData: CompanyOutputDto[] = companies.map((company) => ({
+      id: company.id,
+      companyName: company.companyName,
+      companyCode: company.companyCode,
+      userCount: company._count?.users || 0,
+    }));
+
+    const totalPages = Math.ceil(totalItemCount / pageSize);
+
+    return {
+      currentPage: page,
+      totalPages,
+      totalItemCount,
+      data: companyOutputData,
     };
   }
 }
