@@ -1,27 +1,14 @@
 import { Request, Response } from 'express';
 
-export const errorHandler = (err: unknown, req: Request, res: Response) => {
-  let message = '서버 내부 오류';
-  let statusCode = 500;
+interface CustomError extends Error {
+  status?: number;
+}
 
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'message' in err &&
-    typeof err.message === 'string'
-  ) {
-    message = err.message;
-  }
+export default function errorHandler(err: CustomError, req: Request, res: Response): void {
+  const statusCode = err.status || 500;
+  const message = err.message || '서버 내부 오류';
 
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'status' in err &&
-    typeof err.status === 'number'
-  ) {
-    statusCode = err.status;
-  }
-
+  // 에러 로깅
   // eslint-disable-next-line no-console
   console.error(`[ERROR] ${req.method} ${req.originalUrl}`);
   // eslint-disable-next-line no-console
@@ -29,7 +16,8 @@ export const errorHandler = (err: unknown, req: Request, res: Response) => {
   // eslint-disable-next-line no-console
   console.error(`[MESSAGE] ${message}`);
 
-  res.status(statusCode).json({ success: false, message });
-};
-
-export default errorHandler;
+  res.status(statusCode).json({
+    success: false,
+    message,
+  });
+}

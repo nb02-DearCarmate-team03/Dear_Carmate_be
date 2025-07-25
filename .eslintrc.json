@@ -20,7 +20,7 @@
   "ignorePatterns": ["node_modules/", "tsconfig.json", "dist"],
   "rules": {
     "semi": "error",
-    //"no-console": "off",
+    "no-console": "off",
     "prettier/prettier": [
       "error",
       {
