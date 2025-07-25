@@ -21,8 +21,8 @@ class RegisterDto {
   password: string;
 
   @IsString()
-  @MinLength(8, { message: '비밀번호 확인은 최소 8자 이상이어야 합니다.' })
-  @MaxLength(20, { message: '비밀번호 확인은 최대 20자 이하여야 합니다.' })
+  @MinLength(10, { message: '비밀번호 확인은 최소 10자 이상이어야 합니다.' })
+  @MaxLength(255, { message: '비밀번호 확인은 최대 255자 이하여야 합니다.' })
   passwordConfirmation: string;
 
   @IsString({ message: '기업명은 문자열이어야 합니다.' })

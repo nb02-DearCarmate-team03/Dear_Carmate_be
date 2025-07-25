@@ -16,7 +16,7 @@ class UserRepository {
   }
 
   static async findCompanyByNameAndCode(companyName: string, companyCode: string) {
-    return prisma.company.findFirst({
+    return prisma.company.findUnique({
       where: { companyName, companyCode },
     });
   }
