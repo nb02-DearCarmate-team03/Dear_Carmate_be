@@ -1,14 +1,13 @@
 import express from 'express';
 import errorHandler from './middlewares/error.middleware';
+import indexRouter from './index.routes';
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// TODO: 여기에 라우터 연결 추가 예정
-// 예: app.use('/api/users', userRouter);
-
 app.use(errorHandler);
+
+app.use('/', indexRouter);
 
 export default app;

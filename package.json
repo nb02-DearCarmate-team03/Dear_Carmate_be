@@ -2,17 +2,6 @@
   "name": "dear_carmate_be",
   "version": "1.0.0",
   "description": "[중급 프로젝트] 중고차 사이트 백엔드",
-  "homepage": "https://github.com/nb02-DearCarmate-team03/Dear_Carmate_be#readme",
-  "bugs": {
-    "url": "https://github.com/nb02-DearCarmate-team03/Dear_Carmate_be/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/nb02-DearCarmate-team03/Dear_Carmate_be.git"
-  },
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/main.ts",
