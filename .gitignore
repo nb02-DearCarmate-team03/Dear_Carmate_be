@@ -3,3 +3,4 @@
 .env
 dist/
 /src/generated/prisma
+/src/common/prisma/
