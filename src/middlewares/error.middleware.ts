@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 
-export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (err: unknown, req: Request, res: Response) => {
   let message = '서버 내부 오류';
   let statusCode = 500;
 
