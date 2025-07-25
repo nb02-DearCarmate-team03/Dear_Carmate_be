@@ -2,6 +2,6 @@ import express from 'express';
 
 const router = express.Router();
 
-router.post('/companies');
+router.post('/companies', CompanyController.registerCompany);
 
 export default router;
