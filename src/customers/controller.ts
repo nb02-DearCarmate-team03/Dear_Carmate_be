@@ -3,7 +3,9 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { CustomerService } from './service';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { CreateCustomerDto, UpdateCustomerDto, CustomerListQueryDto } from './dto/customer.dto';
+import { CreateCustomerDto } from './dto/create-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { CustomerListQueryDto } from './dto/customer-list-query.dto';
 
 export class CustomerController {
   private readonly customerService: CustomerService;

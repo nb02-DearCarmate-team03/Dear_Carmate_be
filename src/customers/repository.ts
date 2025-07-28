@@ -1,6 +1,7 @@
 /* eslint-disable no-useless-constructor, no-empty-function */
 import { PrismaClient, Customer, Prisma } from '@prisma/client';
-import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+import { CreateCustomerDto } from './dto/create-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 export class CustomerRepository {
   constructor(private readonly prisma: PrismaClient | Prisma.TransactionClient) {}

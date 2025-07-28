@@ -3,7 +3,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { CustomerRepository } from './repository';
-import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+import { CreateCustomerDto } from './dto/create-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { NotFoundError, BadRequestError, ConflictError } from '../middlewares/error.middleware';
 
 export interface CustomerListResponse {
