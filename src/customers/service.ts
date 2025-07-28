@@ -7,23 +7,32 @@ import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { NotFoundError, BadRequestError, ConflictError } from '../middlewares/error.middleware';
 
 export interface CustomerListResponse {
+  currentPage: number;
+  totalPages: number;
+  totalItemCount: number;
   customers: Array<{
     id: number;
     name: string;
-    gender: string | null;
+    gender: string;
     phoneNumber: string;
     ageGroup: string | null;
     region: string | null;
-    email: string | null;
+    email: string;
     memo: string | null;
     contractCount: number;
   }>;
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+}
+
+export interface CustomerDetailResponse {
+  id: number;
+  name: string;
+  gender: string;
+  phoneNumber: string;
+  ageGroup: string | null;
+  region: string | null;
+  email: string;
+  memo: string | null;
+  contractCount: number;
 }
 
 export class CustomerService {
@@ -33,13 +42,14 @@ export class CustomerService {
     this.customerRepository = new CustomerRepository(prisma);
   }
 
-  async createCustomer(companyId: number, data: CreateCustomerDto) {
-    // 중복 체크
-    if (data.email) {
-      const emailExists = await this.customerRepository.existsByEmail(companyId, data.email);
-      if (emailExists) {
-        throw new Error('이미 등록된 이메일입니다.');
-      }
+  async createCustomer(
+    companyId: number,
+    data: CreateCustomerDto,
+  ): Promise<CustomerDetailResponse> {
+    // 이메일 중복 체크 (이제 필수 필드이므로 무조건 체크)
+    const emailExists = await this.customerRepository.existsByEmail(companyId, data.email);
+    if (emailExists) {
+      throw new ConflictError('이미 등록된 이메일입니다.');
     }
 
     const phoneExists = await this.customerRepository.existsByPhoneNumber(
@@ -47,7 +57,7 @@ export class CustomerService {
       data.phoneNumber,
     );
     if (phoneExists) {
-      throw new Error('이미 등록된 연락처입니다.');
+      throw new ConflictError('이미 등록된 연락처입니다.');
     }
 
     const customer = await this.customerRepository.create(companyId, data);
@@ -55,11 +65,11 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: customer.gender,
+      gender: customer.gender!, // DB에서는 nullable이지만 생성 시에는 필수
       phoneNumber: customer.phoneNumber,
       ageGroup: customer.ageGroup,
       region: customer.region,
-      email: customer.email,
+      email: customer.email!, // DB에서는 nullable이지만 생성 시에는 필수
       memo: customer.memo,
       contractCount: customer.contractCount,
     };
@@ -67,65 +77,66 @@ export class CustomerService {
 
   async getCustomerList(
     companyId: number,
-    // eslint-disable-next-line default-param-last
     page: number = 1,
-    // eslint-disable-next-line default-param-last
-    limit: number = 10,
-    search?: string,
+    pageSize: number = 10,
+    searchBy?: string,
+    keyword?: string,
   ): Promise<CustomerListResponse> {
     const { customers, total } = await this.customerRepository.findMany(
       companyId,
       page,
-      limit,
-      search,
+      pageSize,
+      keyword,
+      searchBy,
     );
 
     return {
+      currentPage: page,
+      totalPages: Math.ceil(total / pageSize),
+      totalItemCount: total,
       customers: customers.map((customer) => ({
         id: customer.id,
         name: customer.name,
-        gender: customer.gender,
+        gender: customer.gender!, // 기존 데이터는 null일 수 있지만 새 데이터는 필수
         phoneNumber: customer.phoneNumber,
         ageGroup: customer.ageGroup,
         region: customer.region,
-        email: customer.email,
+        email: customer.email!, // 기존 데이터는 null일 수 있지만 새 데이터는 필수
         memo: customer.memo,
         contractCount: customer.contractCount,
       })),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
     };
   }
 
-  async getCustomerById(companyId: number, customerId: number) {
+  async getCustomerById(companyId: number, customerId: number): Promise<CustomerDetailResponse> {
     const customer = await this.customerRepository.findById(companyId, customerId);
 
     if (!customer) {
-      throw new Error('존재하지 않는 고객입니다.');
+      throw new NotFoundError('존재하지 않는 고객입니다.');
     }
 
     return {
       id: customer.id,
       name: customer.name,
-      gender: customer.gender,
+      gender: customer.gender!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
       phoneNumber: customer.phoneNumber,
       ageGroup: customer.ageGroup,
       region: customer.region,
-      email: customer.email,
+      email: customer.email!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
       memo: customer.memo,
       contractCount: customer.contractCount,
     };
   }
 
-  async updateCustomer(companyId: number, customerId: number, data: UpdateCustomerDto) {
+  async updateCustomer(
+    companyId: number,
+    customerId: number,
+    data: UpdateCustomerDto,
+  ): Promise<CustomerDetailResponse> {
     const customer = await this.customerRepository.findById(companyId, customerId);
 
     if (!customer) {
-      throw new Error('존재하지 않는 고객입니다.');
+      throw new NotFoundError('존재하지 않는 고객입니다.');
     }
 
     // 이메일 중복 체크
@@ -136,7 +147,7 @@ export class CustomerService {
         customerId,
       );
       if (emailExists) {
-        throw new Error('이미 등록된 이메일입니다.');
+        throw new ConflictError('이미 등록된 이메일입니다.');
       }
     }
 
@@ -148,7 +159,7 @@ export class CustomerService {
         customerId,
       );
       if (phoneExists) {
-        throw new Error('이미 등록된 연락처입니다.');
+        throw new ConflictError('이미 등록된 연락처입니다.');
       }
     }
 
@@ -157,21 +168,21 @@ export class CustomerService {
     return {
       id: updatedCustomer.id,
       name: updatedCustomer.name,
-      gender: updatedCustomer.gender,
+      gender: updatedCustomer.gender!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
       phoneNumber: updatedCustomer.phoneNumber,
       ageGroup: updatedCustomer.ageGroup,
       region: updatedCustomer.region,
-      email: updatedCustomer.email,
+      email: updatedCustomer.email!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
       memo: updatedCustomer.memo,
       contractCount: updatedCustomer.contractCount,
     };
   }
 
-  async deleteCustomer(companyId: number, customerId: number) {
+  async deleteCustomer(companyId: number, customerId: number): Promise<{ message: string }> {
     const customer = await this.customerRepository.findById(companyId, customerId);
 
     if (!customer) {
-      throw new Error('존재하지 않는 고객입니다.');
+      throw new NotFoundError('존재하지 않는 고객입니다.');
     }
 
     await this.customerRepository.softDelete(companyId, customerId);
@@ -179,10 +190,14 @@ export class CustomerService {
     return { message: '고객 삭제 성공' };
   }
 
-  async uploadCustomers(companyId: number, userId: number, file: Express.Multer.File) {
+  async uploadCustomers(
+    companyId: number,
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<{ message: string }> {
     // 파일 타입 체크
     if (!file.mimetype.includes('csv') && !file.mimetype.includes('text/csv')) {
-      throw new Error('CSV 파일만 업로드 가능합니다.');
+      throw new BadRequestError('CSV 파일만 업로드 가능합니다.');
     }
 
     // Upload 레코드 생성
@@ -201,7 +216,7 @@ export class CustomerService {
 
       // 트랜잭션을 사용한 대량 등록
       const result = await this.prisma.$transaction(async (tx) => {
-        const repository = new CustomerRepository(tx);
+        const repository = new CustomerRepository(tx as PrismaClient);
 
         // 유효성 검사 및 중복 체크
         const validCustomers: CreateCustomerDto[] = [];
@@ -295,7 +310,7 @@ export class CustomerService {
           };
 
           // 필수 필드 체크
-          if (customer.name && customer.phoneNumber) {
+          if (customer.name && customer.phoneNumber && customer.gender && customer.email) {
             customers.push(customer);
           }
         })

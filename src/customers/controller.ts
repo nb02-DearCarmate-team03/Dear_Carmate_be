@@ -65,13 +65,14 @@ export class CustomerController {
       }
 
       const query = req.query as CustomerListQueryDto;
-      const { page = 1, limit = 10, search } = query;
+      const { page = 1, pageSize = 10, searchBy, keyword } = query;
 
       const result = await this.customerService.getCustomerList(
         user.companyId,
         Number(page),
-        Number(limit),
-        search,
+        Number(pageSize),
+        searchBy,
+        keyword,
       );
 
       res.status(200).json(result);
