@@ -83,7 +83,7 @@ model Customer {
   id            Int       @id @default(autoincrement())
   companyId     Int       @map("company_id")
   name          String    @db.VarChar(50)
-  gender        Gender?   @map("gender")
+  gender        Gender    @map("gender")
   phoneNumber   String    @map("phone_number") @db.VarChar(20)
   ageGroup      AgeGroup? @map("age_group")
   region        Region?   @map("region")
