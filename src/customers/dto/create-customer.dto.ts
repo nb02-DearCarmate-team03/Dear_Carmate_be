@@ -7,7 +7,6 @@ export class CreateCustomerDto {
   @Length(1, 50)
   name!: string;
 
-  @IsOptional()
   @IsEnum(Gender)
   gender: Gender;
 
@@ -23,7 +22,6 @@ export class CreateCustomerDto {
   @IsEnum(Region)
   region?: Region;
 
-  @IsOptional()
   @IsEmail()
   @Length(1, 100)
   email: string;

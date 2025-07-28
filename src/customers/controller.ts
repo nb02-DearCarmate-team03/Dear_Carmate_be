@@ -67,7 +67,7 @@ export class CustomerController {
       }
 
       const query = req.query as CustomerListQueryDto;
-      const { page = 1, pageSize = 10, searchBy, keyword } = query;
+      const { page = 1, pageSize = 8, searchBy, keyword } = query;
 
       const result = await this.customerService.getCustomerList(
         user.companyId,

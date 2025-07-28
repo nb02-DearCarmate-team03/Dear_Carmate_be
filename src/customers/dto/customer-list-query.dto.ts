@@ -13,7 +13,7 @@ export class CustomerListQueryDto {
   @Transform(({ value }) => parseInt(value, 10))
   @IsInt()
   @Min(1)
-  pageSize?: number = 10;
+  pageSize?: number = 8;
 
   @IsOptional()
   @IsString()

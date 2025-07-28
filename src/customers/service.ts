@@ -79,7 +79,7 @@ export class CustomerService {
   async getCustomerList(
     companyId: number,
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 8,
     searchBy?: string,
     keyword?: string,
   ): Promise<CustomerListResponse> {
