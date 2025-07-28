@@ -1,15 +1,6 @@
-<<<<<<< HEAD
-/node_modules
-/generated/prisma
-.env
-dist/
-/src/generated/prisma
-
-=======
 /node_modules
 /generated/prisma
 .env
 dist/
 /src/generated/prisma
 /src/common/generated/prisma/
->>>>>>> 73a10bab764150c70320e59d5583002fa43bfcf0
