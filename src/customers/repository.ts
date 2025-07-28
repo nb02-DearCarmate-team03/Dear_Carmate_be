@@ -27,18 +27,19 @@ export class CustomerRepository {
   async findMany(
     companyId: number,
     page: number,
-    limit: number,
-    search?: string,
+    pageSize: number,
+    searchBy?: string,
+    keyword?: string,
   ): Promise<{ customers: Customer[]; total: number }> {
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.CustomerWhereInput = {
       companyId,
       deletedAt: null,
-      ...(search && {
+      ...(searchBy && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
+          { name: { contains: searchBy, mode: 'insensitive' } },
+          { email: { contains: searchBy, mode: 'insensitive' } },
         ],
       }),
     };
@@ -47,7 +48,7 @@ export class CustomerRepository {
       this.prisma.customer.findMany({
         where,
         skip,
-        take: limit,
+        take: pageSize,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.customer.count({ where }),
