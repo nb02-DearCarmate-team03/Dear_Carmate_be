@@ -33,7 +33,7 @@ export class CompanyListQueryDto {
   keyword?: string;
 }
 
-export interface CompanyListOutputDto {
+export interface CompanyListResponseDto {
   currentPage: number;
   totalPages: number;
   totalItemCount: number;
