@@ -20,7 +20,7 @@
   "ignorePatterns": ["node_modules/", "tsconfig.json", "dist"],
   "rules": {
     "semi": "error",
-    //"no-console": "off",
+    "no-console": "off",
     "import/prefer-default-export": "off",
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "off",
@@ -48,7 +48,7 @@
       "node": {
         "extensions": [".js", ".jsx", ".ts", ".tsx"]
       },
-      "typescript": {}
+       "typescript": {}
     }
   }
 }
