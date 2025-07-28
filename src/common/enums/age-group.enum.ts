@@ -4,6 +4,8 @@ export enum AgeGroup {
   THIRTIES = 'thirties',
   FORTIES = 'forties',
   FIFTIES = 'fifties',
-  SENIORS = 'seniors',
+  SIXTIES = 'sixties',
+  SEVENTIES = 'seventies',
+  EIGHTIES = 'eighties',
 }
 export default AgeGroup;
