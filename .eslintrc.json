@@ -20,17 +20,10 @@
   "ignorePatterns": ["node_modules/", "tsconfig.json", "dist"],
   "rules": {
     "semi": "error",
-<<<<<<< HEAD
     "no-console": "off",
-=======
-    //"no-console": "off",
-<<<<<<< HEAD
-=======
     "import/prefer-default-export": "off",
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": "off",
->>>>>>> 73a10bab764150c70320e59d5583002fa43bfcf0
->>>>>>> development
     "prettier/prettier": [
       "error",
       {
@@ -55,11 +48,7 @@
       "node": {
         "extensions": [".js", ".jsx", ".ts", ".tsx"]
       },
-<<<<<<< HEAD
        "typescript": {}
-=======
-      "typescript": {}
->>>>>>> development
     }
   }
 }
