@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ESNext",
     "sourceMap": true,
-    "rootDir": ".",                           
+    "rootDir": ".",
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
@@ -40,6 +40,6 @@
       "@shared/*": ["src/shared/*"]
     }
   },
-  "include": ["src", "prisma"],               // ✅ Prisma 폴더 명시적으로 포함
-  "exclude": ["node_modules"]                 // ✅ node_modules만 제외
+  "include": ["src", "src/common/prisma", "types"], // ✅ Prisma 폴더 명시적으로 포함
+  "exclude": ["node_modules"] // ✅ node_modules만 제외
 }
