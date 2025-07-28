@@ -1,35 +1,31 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 
-export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
-  let message = '서버 내부 오류';
-  let statusCode = 500;
+interface CustomError extends Error {
+  status?: number;
+}
 
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'message' in err &&
-    typeof err.message === 'string'
-  ) {
-    message = err.message;
+// eslint-disable-next-line prettier/prettier
+export default function errorHandler(
+  err: CustomError,
+  req: Request,
+  res: Response
+): void {
+  const statusCode = err.status || 500;
+  const message = err.message || '서버 내부 오류';
+
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.error(`[ERROR] ${req.method} ${req.originalUrl}`);
+    // eslint-disable-next-line no-console
+    console.error(`[STATUS] ${statusCode}`);
+    // eslint-disable-next-line no-console
+    console.error(`[MESSAGE] ${message}`);
+    // eslint-disable-next-line no-console
+    console.error(`[STACK] ${err.stack}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.error(`[ERROR] ${message}`);
   }
 
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'status' in err &&
-    typeof err.status === 'number'
-  ) {
-    statusCode = err.status;
-  }
-
-  // eslint-disable-next-line no-console
-  console.error(`[ERROR] ${req.method} ${req.originalUrl}`);
-  // eslint-disable-next-line no-console
-  console.error(`[STATUS] ${statusCode}`);
-  // eslint-disable-next-line no-console
-  console.error(`[MESSAGE] ${message}`);
-
-  res.status(statusCode).json({ success: false, message });
-};
-
-export default errorHandler;
+  res.status(statusCode).json({ message: '서버에서 문제가 발생했습니다.' });
+}
