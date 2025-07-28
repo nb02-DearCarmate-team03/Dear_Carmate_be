@@ -21,6 +21,12 @@
   "rules": {
     "semi": "error",
     //"no-console": "off",
+<<<<<<< HEAD
+=======
+    "import/prefer-default-export": "off",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+>>>>>>> 73a10bab764150c70320e59d5583002fa43bfcf0
     "prettier/prettier": [
       "error",
       {
