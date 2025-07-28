@@ -10,7 +10,7 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsEnum(Gender)
-  gender?: Gender;
+  gender: Gender;
 
   @IsString()
   @Length(1, 20)
@@ -27,7 +27,7 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsEmail()
   @Length(1, 100)
-  email?: string;
+  email: string;
 
   @IsOptional()
   @IsString()
@@ -78,11 +78,15 @@ export class CustomerListQueryDto {
   @Transform(({ value }) => parseInt(value, 10))
   @IsInt()
   @Min(1)
-  limit?: number = 10;
+  pageSize?: number = 10;
 
   @IsOptional()
   @IsString()
-  search?: string;
+  searchBy?: string;
+
+  @IsOptional()
+  @IsString()
+  keyword?: string;
 }
 
 export class UploadCustomersDto {
