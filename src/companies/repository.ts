@@ -1,35 +1,45 @@
-import { Prisma } from '@prisma/client';
-import prisma from '../common/prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { FindManyCompanyOptions } from './dto/get-companies.dto';
 import { FindManyUserOptions } from './dto/get-users.dto';
 
 export default class CompanyRepository {
-  static async create(data: Prisma.CompanyCreateInput) {
-    return prisma.company.create({
+  private readonly prisma: PrismaClient | Prisma.TransactionClient;
+
+  constructor(prisma: PrismaClient | Prisma.TransactionClient) {
+    this.prisma = prisma;
+  }
+
+  async create(data: Prisma.CompanyCreateInput) {
+    return this.prisma.company.create({
       data,
+      include: {
+        _count: {
+          select: { users: true },
+        },
+      },
     });
   }
 
-  static async findById(companyId: number) {
-    return prisma.company.findUnique({
+  async findById(companyId: number) {
+    return this.prisma.company.findUnique({
       where: { id: companyId },
     });
   }
 
-  static async findByName(companyName: string) {
-    return prisma.company.findUnique({
+  async findByName(companyName: string) {
+    return this.prisma.company.findUnique({
       where: { companyName },
     });
   }
 
-  static async findByCode(companyCode: string) {
-    return prisma.company.findUnique({
+  async findByCode(companyCode: string) {
+    return this.prisma.company.findUnique({
       where: { companyCode },
     });
   }
 
-  static async findManyCompany(options: FindManyCompanyOptions) {
-    return prisma.company.findMany({
+  async findManyCompany(options: FindManyCompanyOptions) {
+    return this.prisma.company.findMany({
       skip: options.skip,
       take: options.take,
       where: options.where,
@@ -42,12 +52,12 @@ export default class CompanyRepository {
     });
   }
 
-  static async countCompanies(where?: Prisma.CompanyWhereInput): Promise<number> {
-    return prisma.company.count({ where });
+  async countCompanies(where?: Prisma.CompanyWhereInput): Promise<number> {
+    return this.prisma.company.count({ where });
   }
 
-  static async findManyUser(options: FindManyUserOptions) {
-    return prisma.user.findMany({
+  async findManyUser(options: FindManyUserOptions) {
+    return this.prisma.user.findMany({
       skip: options.skip,
       take: options.take,
       where: options.where,
@@ -62,12 +72,12 @@ export default class CompanyRepository {
     });
   }
 
-  static async countUsers(where?: Prisma.UserWhereInput): Promise<number> {
-    return prisma.user.count({ where });
+  async countUsers(where?: Prisma.UserWhereInput): Promise<number> {
+    return this.prisma.user.count({ where });
   }
 
-  static async updateCompany(companyId: number, data: Prisma.CompanyUpdateInput) {
-    return prisma.company.update({
+  async updateCompany(companyId: number, data: Prisma.CompanyUpdateInput) {
+    return this.prisma.company.update({
       where: { id: companyId },
       data,
       include: {
@@ -78,8 +88,8 @@ export default class CompanyRepository {
     });
   }
 
-  static async deleteCompany(companyId: number) {
-    return prisma.company.delete({
+  async deleteCompany(companyId: number) {
+    return this.prisma.company.delete({
       where: { id: companyId },
     });
   }

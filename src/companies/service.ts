@@ -15,19 +15,25 @@ import {
 import UpdateCompanyDto from './dto/update-companies.dto';
 
 export default class CompanyService {
-  static async registerCompany(data: CreateCompanyDto): Promise<CompanyOutputDto> {
+  private readonly companyRepository: CompanyRepository;
+
+  constructor(companyRepository: CompanyRepository) {
+    this.companyRepository = companyRepository;
+  }
+
+  async registerCompany(data: CreateCompanyDto): Promise<CompanyOutputDto> {
     // companyName 중복 체크
-    const existingCompanyName = await CompanyRepository.findByName(data.companyName);
+    const existingCompanyName = await this.companyRepository.findByName(data.companyName);
     if (existingCompanyName) {
       throw new Error('이미 존재하는 기업명입니다.');
     }
     // companyCode 중복 체크
-    const existingCompanyCode = await CompanyRepository.findByCode(data.companyCode);
+    const existingCompanyCode = await this.companyRepository.findByCode(data.companyCode);
     if (existingCompanyCode) {
       throw new Error('이미 존재하는 기업코드입니다.');
     }
     // 새로운 기업 등록
-    const newCompany = await CompanyRepository.create({
+    const newCompany = await this.companyRepository.create({
       companyName: data.companyName,
       companyCode: data.companyCode,
     });
@@ -36,11 +42,11 @@ export default class CompanyService {
       id: newCompany.id,
       companyName: newCompany.companyName,
       companyCode: newCompany.companyCode,
-      userCount: newCompany.userCount,
+      userCount: newCompany._count?.users || 0,
     };
   }
 
-  static async getCompanyList(query: CompanyListQueryDto): Promise<CompanyListResponseDto> {
+  async getCompanyList(query: CompanyListQueryDto): Promise<CompanyListResponseDto> {
     const { page, pageSize } = query;
 
     const skip = (page - 1) * pageSize;
@@ -61,8 +67,8 @@ export default class CompanyService {
       orderBy: { id: 'asc' },
     };
 
-    const totalItemCount = await CompanyRepository.countCompanies(whereClause);
-    const companies = await CompanyRepository.findManyCompany(findOptions);
+    const totalItemCount = await this.companyRepository.countCompanies(whereClause);
+    const companies = await this.companyRepository.findManyCompany(findOptions);
 
     const companyOutputData: CompanyOutputDto[] = companies.map((company) => ({
       id: company.id,
@@ -81,7 +87,7 @@ export default class CompanyService {
     };
   }
 
-  static async getCompanyUsers(query: UserListQueryDto): Promise<UserListResponseDto> {
+  async getCompanyUsers(query: UserListQueryDto): Promise<UserListResponseDto> {
     const { page, pageSize } = query;
 
     const skip = (page - 1) * pageSize;
@@ -116,8 +122,8 @@ export default class CompanyService {
       orderBy: { id: 'asc' },
     };
 
-    const totalItemCount = await CompanyRepository.countUsers(whereClause);
-    const users = await CompanyRepository.findManyUser(findOptions);
+    const totalItemCount = await this.companyRepository.countUsers(whereClause);
+    const users = await this.companyRepository.findManyUser(findOptions);
 
     const userOutputData: UserOutputDto[] = users.map((user) => ({
       id: user.id,
@@ -139,22 +145,22 @@ export default class CompanyService {
     };
   }
 
-  static async updateCompany(companyId: number, data: UpdateCompanyDto): Promise<CompanyOutputDto> {
-    const existingCompany = await CompanyRepository.findById(companyId);
+  async updateCompany(companyId: number, data: UpdateCompanyDto): Promise<CompanyOutputDto> {
+    const existingCompany = await this.companyRepository.findById(companyId);
     if (!existingCompany) {
       throw new Error('회사를 찾을 수 없습니다.');
     }
 
     // companyName 중복 체크
     if (data.companyName && data.companyName !== existingCompany.companyName) {
-      const existingCompanyName = await CompanyRepository.findByName(data.companyName);
+      const existingCompanyName = await this.companyRepository.findByName(data.companyName);
       if (existingCompanyName) {
         throw new Error('이미 존재하는 기업명입니다.');
       }
     }
     // companyCode 중복 체크
     if (data.companyCode && data.companyCode !== existingCompany.companyCode) {
-      const existingCompanyCode = await CompanyRepository.findByCode(data.companyCode);
+      const existingCompanyCode = await this.companyRepository.findByCode(data.companyCode);
       if (existingCompanyCode) {
         throw new Error('이미 존재하는 기업코드입니다.');
       }
@@ -166,7 +172,7 @@ export default class CompanyService {
     };
 
     // company 업데이트
-    const updatedCompany = await CompanyRepository.updateCompany(companyId, updateData);
+    const updatedCompany = await this.companyRepository.updateCompany(companyId, updateData);
 
     return {
       id: updatedCompany.id,
@@ -176,14 +182,14 @@ export default class CompanyService {
     };
   }
 
-  static async deleteCompany(companyId: number): Promise<{ message: string }> {
-    const existingCompany = await CompanyRepository.findById(companyId);
+  async deleteCompany(companyId: number): Promise<{ message: string }> {
+    const existingCompany = await this.companyRepository.findById(companyId);
     if (!existingCompany) {
       throw new Error('회사를 찾을 수 없습니다.');
     }
 
     // 회사 삭제
-    await CompanyRepository.deleteCompany(companyId);
+    await this.companyRepository.deleteCompany(companyId);
 
     return { message: '회사 삭제 성공' };
   }

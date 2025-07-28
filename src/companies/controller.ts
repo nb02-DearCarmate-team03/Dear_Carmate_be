@@ -6,60 +6,66 @@ import { UserListQueryDto } from './dto/get-users.dto';
 import UpdateCompanyDto from './dto/update-companies.dto';
 
 export default class CompanyController {
-  static async registerCompany(req: Request, res: Response, next: NextFunction) {
+  private readonly companyService: CompanyService;
+
+  constructor(companyService: CompanyService) {
+    this.companyService = companyService;
+  }
+
+  registerCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyData: CreateCompanyDto = req.body;
 
-      const registerCompany = await CompanyService.registerCompany(companyData);
+      const registerCompany = await this.companyService.registerCompany(companyData);
 
       res.status(201).json(registerCompany);
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  static async getCompanyList(req: Request, res: Response, next: NextFunction) {
+  getCompanyList = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const query: CompanyListQueryDto = req.query as unknown as CompanyListQueryDto;
 
-      const companyList = await CompanyService.getCompanyList(query);
+      const companyList = await this.companyService.getCompanyList(query);
       res.status(200).json(companyList);
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  static async getUserList(req: Request, res: Response, next: NextFunction) {
+  getUserList = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const query: UserListQueryDto = req.query as unknown as UserListQueryDto;
 
-      const userList = await CompanyService.getCompanyUsers(query);
+      const userList = await this.companyService.getCompanyUsers(query);
       res.status(200).json(userList);
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  static async updateCompany(req: Request, res: Response, next: NextFunction) {
+  updateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = Number(req.params.companyId);
       const data: UpdateCompanyDto = req.body;
-      const updatedCompany = await CompanyService.updateCompany(companyId, data);
+      const updatedCompany = await this.companyService.updateCompany(companyId, data);
 
       res.status(200).json(updatedCompany);
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  static async deleteCompany(req: Request, res: Response, next: NextFunction) {
+  deleteCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = Number(req.params.companyId);
-      await CompanyService.deleteCompany(companyId);
+      const result = await this.companyService.deleteCompany(companyId);
 
-      res.status(204).send();
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
-  }
+  };
 }

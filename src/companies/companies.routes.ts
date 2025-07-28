@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import CompanyController from './controller';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -6,12 +6,16 @@ import { CompanyListQueryDto } from './dto/get-companies.dto';
 import { UserListQueryDto } from './dto/get-users.dto';
 import UpdateCompanyDto from './dto/update-companies.dto';
 
-const router = express.Router();
+const CompaniesRouter = (companyController: CompanyController): Router => {
+  const router = Router();
 
-router.post('/', validateDto(CreateCompanyDto), CompanyController.registerCompany);
-router.get('/', validateDto(CompanyListQueryDto), CompanyController.getCompanyList);
-router.get('/users', validateDto(UserListQueryDto), CompanyController.getUserList);
-router.patch('/:companyId', validateDto(UpdateCompanyDto), CompanyController.updateCompany);
-router.delete('/:companyId', CompanyController.deleteCompany);
+  router.post('/', validateDto(CreateCompanyDto), companyController.registerCompany);
+  router.get('/', validateDto(CompanyListQueryDto), companyController.getCompanyList);
+  router.get('/users', validateDto(UserListQueryDto), companyController.getUserList);
+  router.patch('/:companyId', validateDto(UpdateCompanyDto), companyController.updateCompany);
+  router.delete('/:companyId', companyController.deleteCompany);
 
-export default router;
+  return router;
+};
+
+export default CompaniesRouter;
