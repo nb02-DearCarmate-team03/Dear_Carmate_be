@@ -1,8 +1,33 @@
-import express from 'express';
+import { Router } from 'express';
 import CompanyController from './controller';
+import validateDto from '../common/utils/validate.dto';
+import { CreateCompanyDto } from './dto/create-company.dto';
+import { CompanyListQueryDto } from './dto/get-companies.dto';
+import { UserListQueryDto } from './dto/get-users.dto';
+import UpdateCompanyDto from './dto/update-companies.dto';
+import { authenticateJWT, authorizeAdmin } from '../middlewares/auth.middleware';
 
-const router = express.Router();
+const CompaniesRouter = (companyController: CompanyController): Router => {
+  const router = Router();
 
-router.post('/companies', CompanyController.registerCompany);
+  router.use(authenticateJWT);
+  router.post(
+    '/',
+    authorizeAdmin,
+    validateDto(CreateCompanyDto),
+    companyController.registerCompany,
+  );
+  router.get('/', validateDto(CompanyListQueryDto), companyController.getCompanyList);
+  router.get('/users', validateDto(UserListQueryDto), companyController.getUserList);
+  router.patch(
+    '/:companyId',
+    authorizeAdmin,
+    validateDto(UpdateCompanyDto),
+    companyController.updateCompany,
+  );
+  router.delete('/:companyId', authorizeAdmin, companyController.deleteCompany);
 
-export default router;
+  return router;
+};
+
+export default CompaniesRouter;
