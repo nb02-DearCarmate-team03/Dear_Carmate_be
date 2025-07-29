@@ -19,8 +19,13 @@ const CompaniesRouter = (companyController: CompanyController): Router => {
   );
   router.get('/', validateDto(CompanyListQueryDto), companyController.getCompanyList);
   router.get('/users', validateDto(UserListQueryDto), companyController.getUserList);
-  router.patch('/:companyId', validateDto(UpdateCompanyDto), companyController.updateCompany);
-  router.delete('/:companyId', companyController.deleteCompany);
+  router.patch(
+    '/:companyId',
+    authorizeAdmin,
+    validateDto(UpdateCompanyDto),
+    companyController.updateCompany,
+  );
+  router.delete('/:companyId', authorizeAdmin, companyController.deleteCompany);
 
   return router;
 };
