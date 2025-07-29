@@ -40,6 +40,6 @@
       "@shared/*": ["src/shared/*"]
     }
   },
-  "include": ["src/**/*", "prisma/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["src", "prisma", "src/common/enums/.ts"],               // ✅ Prisma 폴더 명시적으로 포함
+  "exclude": ["node_modules"]                 // ✅ node_modules만 제외
 }

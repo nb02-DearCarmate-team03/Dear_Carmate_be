@@ -1,5 +1,7 @@
-import prisma from '../common/prisma/client';
+import { PrismaClient } from '@prisma/client';
 import ContractStatus from '../common/enums/contract-status.enum';
+
+const prisma = new PrismaClient();
 
 const getMonthlyRevenue = async (companyId: number): Promise<number> => {
   const now = new Date();
