@@ -1,11 +1,15 @@
-import express from 'express';
+import { Router } from 'express';
 import AuthController from './controller';
 import validateDto from '../common/utils/validate.dto';
 import { LoginDto } from './dto/login.dto';
 
-const router = express.Router();
+const AuthRoutes = (authController: AuthController): Router => {
+  const router = Router();
 
-router.post('/login', validateDto(LoginDto), AuthController.login);
-router.post('/refresh', AuthController.refresh);
+  router.post('/login', validateDto(LoginDto), authController.login);
+  router.post('/refresh', authController.refresh);
 
-export default router;
+  return router;
+};
+
+export default AuthRoutes;

@@ -1,18 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
 import AuthService, { LoginResponse } from './service';
 import { LoginDto } from './dto/login.dto';
+import { BadRequestError } from '../middlewares/error.middleware';
 
 class AuthController {
-  static async login(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  private readonly authService: AuthService;
+
+  constructor(authService: AuthService) {
+    this.authService = authService;
+  }
+
+  login = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
       const { email, password } = req.body as LoginDto;
-      const user = await AuthService.validateUser(email, password);
+      const user = await this.authService.validateUser(email, password);
 
       if (!user) {
         return res.status(401).json({ message: '인증이 필요합니다.' });
       }
 
-      const loginResponse: LoginResponse = await AuthService.login(user);
+      const loginResponse: LoginResponse = await this.authService.login(user);
 
       res.cookie('accessToken', loginResponse.accessToken, {
         httpOnly: true,
@@ -30,17 +37,17 @@ class AuthController {
     } catch (error: unknown) {
       return next(error);
     }
-  }
+  };
 
-  static async refresh(req: Request, res: Response): Promise<Response | void> {
+  refresh = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
     try {
       const refreshToken: string = req.cookies?.refreshToken;
 
       if (!refreshToken) {
-        return res.status(400).json({ message: '잘못된 요청입니다' });
+        throw new BadRequestError('RefreshToken이 존재하지 않습니다.');
       }
 
-      const loginResponse: LoginResponse = await AuthService.refreshTokens(refreshToken);
+      const loginResponse: LoginResponse = await this.authService.refreshTokens(refreshToken);
 
       res.cookie('accessToken', loginResponse.accessToken, {
         httpOnly: true,
@@ -58,10 +65,10 @@ class AuthController {
         accessToken: loginResponse.accessToken,
         refreshToken: loginResponse.refreshToken,
       });
-    } catch (error) {
-      return res.status(400).json({ message: error.message || '토큰 재발급 실패' });
+    } catch (error: unknown) {
+      return next(error);
     }
-  }
+  };
 }
 
 export default AuthController;

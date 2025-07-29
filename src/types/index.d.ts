@@ -9,6 +9,7 @@ type AuthUser = Pick<
   | 'employeeNumber'
   | 'phoneNumber'
   | 'isAdmin'
+  | 'imageUrl'
   | 'isActive'
   | 'lastLoginAt'
   | 'createdAt'

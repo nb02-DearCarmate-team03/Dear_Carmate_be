@@ -6,10 +6,12 @@ import bcrypt from 'bcrypt';
 import { Request } from 'express';
 import AuthRepository from './repository';
 import { JWT_ACCESS_TOKEN_SECRET } from '../common/constants/constants';
+import prisma from '../common/prisma/client';
 
 if (!JWT_ACCESS_TOKEN_SECRET) {
   throw new Error('JWT_SECRET 환경변수가 설정되지 않았습니다.');
 }
+const authRepository = new AuthRepository(prisma);
 
 interface JwtPayload {
   sub: number;
@@ -24,7 +26,7 @@ passport.use(
     { usernameField: 'email', passwordField: 'password' },
     async (email, password, done): Promise<void> => {
       try {
-        const user = await AuthRepository.findByEmail(email);
+        const user = await authRepository.findByEmail(email);
         if (!user) return done(null, false, { message: '존재하지 않는 이메일입니다.' });
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -50,7 +52,7 @@ passport.use(
     },
     async (payload: JwtPayload, done: VerifiedCallback): Promise<void> => {
       try {
-        const user = await AuthRepository.findById(payload.sub);
+        const user = await authRepository.findById(Number(payload.sub));
         if (!user) return done(null, false);
         return done(null, user);
       } catch (error: unknown) {

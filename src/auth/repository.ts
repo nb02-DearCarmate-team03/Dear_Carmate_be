@@ -1,13 +1,17 @@
-import { User, Company } from '@prisma/client';
-import prisma from '../common/prisma/client';
+import { User, Company, PrismaClient, Prisma } from '@prisma/client';
 
 export type UserAndCompany = User & {
   company: Pick<Company, 'companyCode'>;
 };
 
 class AuthRepository {
-  static async findByEmail(email: string): Promise<UserAndCompany | null> {
-    return prisma.user.findUnique({
+  private readonly prisma: PrismaClient | Prisma.TransactionClient;
+  constructor(prisma: PrismaClient | Prisma.TransactionClient) {
+    this.prisma = prisma;
+  }
+
+  async findByEmail(email: string): Promise<UserAndCompany | null> {
+    return this.prisma.user.findUnique({
       where: { email },
       include: {
         company: {
@@ -19,8 +23,8 @@ class AuthRepository {
     });
   }
 
-  static async findById(id: number): Promise<UserAndCompany | null> {
-    return prisma.user.findUnique({
+  async findById(id: number): Promise<UserAndCompany | null> {
+    return this.prisma.user.findUnique({
       where: { id },
       include: {
         company: {
@@ -32,8 +36,8 @@ class AuthRepository {
     });
   }
 
-  static async updateLastLogin(userId: number): Promise<void> {
-    await prisma.user.update({
+  async updateLastLoginAt(userId: number): Promise<void> {
+    await this.prisma.user.update({
       where: { id: userId },
       data: { lastLoginAt: new Date() },
     });
