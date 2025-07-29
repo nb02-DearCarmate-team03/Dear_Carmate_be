@@ -1,6 +1,7 @@
 // 차량 타입별 매출 통계를 위한 API 응답용 DTO
-import { CarType } from '../../common/enums/car-type.enum';
 
+import { IsEnum, IsNumber } from 'class-validator';
+import { CarType } from '../../common/enums/car-type.enum';
 /**
  * 차량 타입별 매출 정보
  *
@@ -8,6 +9,9 @@ import { CarType } from '../../common/enums/car-type.enum';
  * - count: 해당 타입 차량들의 총 매출액
  */
 export class SalesByCarTypeDto {
+  @IsEnum(CarType)
   carType: CarType;
+
+  @IsNumber()
   count: number;
 }

@@ -1,22 +1,30 @@
-import { CarType } from '../../common/enums/car-type.enum';
+import { IsNumber, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CarTypeCountDto } from './car-type-count.dto';
 
-/**
- * 대시보드 전체 요약 통계 응답 DTO
- */
 export class SummaryResponseDto {
+  @IsNumber()
   monthlySales: number;
+
+  @IsNumber()
   lastMonthSales: number;
+
+  @IsNumber()
   growthRate: number;
+
+  @IsNumber()
   proceedingContractsCount: number;
+
+  @IsNumber()
   completedContractsCount: number;
 
-  contractsByCarType: {
-    carType: CarType;
-    count: number;
-  }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CarTypeCountDto)
+  contractsByCarType: CarTypeCountDto[];
 
-  salesByCarType: {
-    carType: CarType;
-    count: number;
-  }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CarTypeCountDto)
+  salesByCarType: CarTypeCountDto[];
 }

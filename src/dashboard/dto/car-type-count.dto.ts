@@ -1,7 +1,7 @@
 import { IsEnum, IsNumber } from 'class-validator';
 import { CarType } from '../../common/enums/car-type.enum';
 
-export class ContractByCarTypeDto {
+export class CarTypeCountDto {
   @IsEnum(CarType)
   carType: CarType;
 
