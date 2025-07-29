@@ -6,15 +6,6 @@ import { CarType } from '../../common/enums/car-type.enum';
  * - Prisma에서 groupBy를 사용할 때 반환되는 원본 형태를 반영한 구조입니다.
  * - 실제 API 응답에서는 사용되지 않고, Service 레이어에서 SalesByCarTypeDto로 변환됩니다.
  *
- * 구조 예시:
- * {
- *   carType: 'SUV',
- *   _sum: {
- *     car: {
- *       price: 15000000
- *     }
- *   }
- * }
  */
 export class SalesByCarTypeRawDto {
   carType: CarType;
