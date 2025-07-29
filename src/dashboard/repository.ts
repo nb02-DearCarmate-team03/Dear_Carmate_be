@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-import ContractStatus from '../common/enums/contract-status.enum';
+import { PrismaClient, ContractStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -10,21 +9,19 @@ const getMonthlyRevenue = async (companyId: number): Promise<number> => {
 
   const result = await prisma.contract.aggregate({
     _sum: {
-      car: {
-        select: { price: true },
-      },
+      contractPrice: true,
     },
     where: {
       companyId,
-      status: ContractStatus.SUCCESS,
-      meetingDate: {
+      status: ContractStatus.CONTRACT_SUCCESSFUL,
+      createdAt: {
         gte: firstDay,
         lte: lastDay,
       },
     },
   });
 
-  return result._sum?.car?.price ?? 0;
+  return result._sum.contractPrice?.toNumber() ?? 0;
 };
 
 const getLastMonthRevenue = async (companyId: number): Promise<number> => {
@@ -34,21 +31,19 @@ const getLastMonthRevenue = async (companyId: number): Promise<number> => {
 
   const result = await prisma.contract.aggregate({
     _sum: {
-      car: {
-        select: { price: true },
-      },
+      contractPrice: true,
     },
     where: {
       companyId,
-      status: ContractStatus.SUCCESS,
-      meetingDate: {
+      status: ContractStatus.CONTRACT_SUCCESSFUL,
+      createdAt: {
         gte: firstDay,
         lte: lastDay,
       },
     },
   });
 
-  return result._sum?.car?.price ?? 0;
+  return result._sum.contractPrice?.toNumber() ?? 0;
 };
 
 const getOngoingContractCount = async (companyId: number): Promise<number> => {
@@ -56,7 +51,11 @@ const getOngoingContractCount = async (companyId: number): Promise<number> => {
     where: {
       companyId,
       status: {
-        in: [ContractStatus.CHECKING, ContractStatus.NEGOTIATING],
+        in: [
+          ContractStatus.CAR_INSPECTION,
+          ContractStatus.PRICE_NEGOTIATION,
+          ContractStatus.CONTRACT_DRAFT,
+        ],
       },
     },
   });
@@ -66,38 +65,76 @@ const getSuccessfulContractCount = async (companyId: number): Promise<number> =>
   return prisma.contract.count({
     where: {
       companyId,
-      status: ContractStatus.SUCCESS,
+      status: ContractStatus.CONTRACT_SUCCESSFUL,
     },
   });
 };
 
 const getContractsByCarType = async (companyId: number) => {
-  return prisma.contract.groupBy({
-    by: ['carType'],
+  const cars = await prisma.car.findMany({
     where: {
       companyId,
     },
-    _count: {
-      _all: true,
-    },
-  });
-};
-
-const getSalesByCarType = async (companyId: number) => {
-  return prisma.contract.groupBy({
-    by: ['carType'],
-    where: {
-      companyId,
-      status: ContractStatus.SUCCESS,
-    },
-    _sum: {
-      car: {
+    select: {
+      type: true,
+      contracts: {
         select: {
-          price: true,
+          id: true,
         },
       },
     },
   });
+
+  const grouped = cars.reduce(
+    (acc, car) => {
+      const typeKey = car.type ?? 'UNKNOWN';
+      if (!acc[typeKey]) {
+        acc[typeKey] = 0;
+      }
+      acc[typeKey] += car.contracts.length;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  return grouped;
+};
+
+const getSalesByCarType = async (companyId: number) => {
+  const cars = await prisma.car.findMany({
+    where: {
+      companyId,
+    },
+    select: {
+      type: true,
+      contracts: {
+        where: {
+          status: ContractStatus.CONTRACT_SUCCESSFUL,
+        },
+        select: {
+          contractPrice: true,
+        },
+      },
+    },
+  });
+
+  const grouped = cars.reduce(
+    (acc, car) => {
+      const typeKey = car.type ?? 'UNKNOWN';
+      if (!acc[typeKey]) {
+        acc[typeKey] = 0;
+      }
+      const total = car.contracts.reduce(
+        (sum, contract) => sum + (contract.contractPrice?.toNumber() ?? 0),
+        0,
+      );
+      acc[typeKey] += total;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  return grouped;
 };
 
 export default {

@@ -1,15 +1,10 @@
 import { CarType } from '../../common/enums/car-type.enum';
 
 /**
- * 차량 타입별 매출 통계 DTO
+ * 차량 타입별 계약 수 응답 DTO
+ * - Prisma groupBy(_count) 결과를 매핑한 구조
  */
-
-export class SalesByCarTypeDto {
+export class ContractByCarTypeDto {
   carType: CarType;
-  count: number; // 매출 총합 (금액)
+  count: number;
 }
-
-export type ContractByCarType = {
-  carType: CarType;
-  _count: { _all: number };
-};
