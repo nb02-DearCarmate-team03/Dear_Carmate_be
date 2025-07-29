@@ -1,23 +1,14 @@
 import DashboardRepository from './repository';
 import { CarType } from '../common/enums/car-type.enum';
 import { SummaryResponseDto } from './dto/summary-response.dto';
+import { ContractByCarTypeDto } from './dto/contract-by-car-type.dto';
 import { SalesByCarTypeDto } from './dto/sales-by-car-type.dto';
 
 /**
- * 차량 타입별 계약 수 groupBy 결과 타입 (carType은 optional)
- */
-type GroupedContractByCarType = {
-  carType?: CarType;
-  _count: {
-    _all: number;
-  };
-};
-
-/**
- * 차량 타입별 매출액 groupBy 결과 타입 (carType은 optional)
+ * 차량 타입별 매출액 groupBy 결과 타입 (Prisma 원시 결과)
  */
 type GroupedSalesByCarType = {
-  carType?: CarType;
+  carType: CarType | null;
   _sum: {
     car: {
       price: number;
@@ -39,8 +30,8 @@ class DashboardService {
       DashboardRepository.getLastMonthRevenue(companyId),
       DashboardRepository.getOngoingContractCount(companyId),
       DashboardRepository.getSuccessfulContractCount(companyId),
-      DashboardRepository.getContractsByCarType(companyId),
-      DashboardRepository.getSalesByCarType(companyId),
+      DashboardRepository.getContractsByCarType(companyId), // Record<string, number>
+      DashboardRepository.getSalesByCarType(companyId), // GroupBy 결과
     ]);
 
     const growthRate =
@@ -48,17 +39,19 @@ class DashboardService {
         ? 100
         : Number((((monthlySales - lastMonthSales) / lastMonthSales) * 100).toFixed(2));
 
-    const contractsByCarType = (contractsByCarTypeRaw as GroupedContractByCarType[]).map(
-      (item) => ({
-        carType: item.carType ?? '알수없음', // 또는 as CarType
-        count: item._count._all,
+    const contractsByCarType: ContractByCarTypeDto[] = Object.entries(contractsByCarTypeRaw).map(
+      ([carType, count]) => ({
+        carType: carType as CarType,
+        count,
       }),
     );
 
-    const salesByCarType = (salesByCarTypeRaw as GroupedSalesByCarType[]).map((item) => ({
-      carType: item.carType ?? '알수없음',
-      count: item._sum?.car?.price ?? 0,
-    }));
+    const salesByCarType: SalesByCarTypeDto[] = Object.entries(salesByCarTypeRaw).map(
+      ([carType, totalPrice]) => ({
+        carType: carType as CarType,
+        count: totalPrice,
+      }),
+    );
 
     return {
       monthlySales,
