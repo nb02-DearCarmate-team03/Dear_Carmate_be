@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { AuthUserPayload } from './dto/login.dto';
 import AuthRepository from './repository';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from './jwt';
-import { UnauthorizedError } from '../middlewares/error.middleware';
+import { NotFoundError, UnauthorizedError } from '../middlewares/error.middleware';
 
 export interface LoginResponse {
   user: {
@@ -33,7 +33,7 @@ class AuthService {
 
   async validateUser(email: string, password: string) {
     const user = await this.authRepository.findByEmail(email);
-    if (!user) throw new UnauthorizedError('존재하지 않는 이메일입니다.');
+    if (!user) throw new NotFoundError('존재하지 않거나 비밀번호가 일치하지 않습니다.');
 
     if (!user.isActive) {
       throw new UnauthorizedError('비활성화된 계정입니다.');
