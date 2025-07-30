@@ -45,12 +45,20 @@
     "@typescript-eslint/no-explicit-any": "off",
     "no-underscore-dangle": "off"
   },
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {
+        "no-undef": "off" 
+      }
+    }
+  ],
   "settings": {
     "import/resolver": {
       "node": {
         "extensions": [".js", ".jsx", ".ts", ".tsx"]
       },
-       "typescript": {}
+      "typescript": {}
     }
   }
 }
