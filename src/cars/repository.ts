@@ -66,4 +66,15 @@ export default class CarRepository {
       skipDuplicates: true, // 중복된 레코드 건너뛰기
     });
   }
+
+  async findManyCarModel(): Promise<Array<{ manufacturer: string; model: string }>> {
+    return this.prisma.car.findMany({
+      select: {
+        manufacturer: true,
+        model: true,
+      },
+      distinct: ['manufacturer', 'model'], // 제조사, 모델 조합 중복 방지
+      orderBy: [{ manufacturer: 'asc' }, { model: 'asc' }],
+    });
+  }
 }

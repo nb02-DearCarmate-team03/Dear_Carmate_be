@@ -1,15 +1,32 @@
 import { Prisma, CarType, CarStatus } from '@prisma/client';
+import { parse } from 'csv-parse';
 import {
+  AppError,
   BadRequestError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from 'src/middlewares/error.middleware';
+import { Readable } from 'stream';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { CarResponseDto, CreateCarDTO } from './dto/create-car.dto';
 import CarRepository from './repository';
 import { CarListQueryDto, CarListResponseDto, FindManyCarOptions } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
+import { UploadCarDto } from './dto/upload-car.dto';
+
+const BATCH_SIZE = 1000;
+
+export interface CarModelOfManufacturer {
+  manufacturer: string;
+  model: string[];
+}
+
+export interface CarModelListResponseDto {
+  data: CarModelOfManufacturer[];
+}
 
 export default class CarService {
   private readonly carRepository: CarRepository;
@@ -250,5 +267,169 @@ export default class CarService {
       accidentDetails: detailcar.accidentDetails,
       status: detailcar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
     };
+  }
+
+  async uploadCars(fileBuffer: Buffer, authCompanyId: number): Promise<{ message: string }> {
+    const recordsToInsert: Prisma.CarCreateManyInput[] = [];
+    const failedRecords: any[] = [];
+    let totalRecords = 0;
+
+    const parser = parse({
+      delimiter: ',',
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+
+    const readableStream = Readable.from(fileBuffer);
+
+    return new Promise((resolve, reject) => {
+      readableStream
+        .pipe(parser)
+        .on('data', async (record: any) => {
+          totalRecords += 1;
+
+          const carRecordDto = plainToInstance(UploadCarDto, record);
+          const errors = await validate(carRecordDto);
+
+          if (errors.length > 0) {
+            failedRecords.push({
+              lineNumber: totalRecords,
+              record,
+              errors: errors.map((err) => Object.values(err.constraints || {})).flat(),
+            });
+            return;
+          }
+
+          let prismaCarType: CarType;
+          switch (carRecordDto.type) {
+            case '경·소형':
+              prismaCarType = CarType.COMPACT;
+              break;
+            case '준중·중형':
+              prismaCarType = CarType.MIDSIZE;
+              break;
+            case '대형':
+              prismaCarType = CarType.FULLSIZE;
+              break;
+            case '스포츠카':
+              prismaCarType = CarType.SPORTS;
+              break;
+            case 'SUV':
+              prismaCarType = CarType.SUV;
+              break;
+            default:
+              failedRecords.push({
+                lineNumber: totalRecords,
+                record,
+                errors: [`유효하지 않은 차량 유형: ${carRecordDto.type}`],
+              });
+              return;
+          }
+          const existingCar = await this.carRepository.findByCarNumber(
+            authCompanyId,
+            carRecordDto.carNumber,
+          );
+          if (existingCar) {
+            failedRecords.push({
+              lineNumber: totalRecords,
+              record,
+              errors: [
+                `이미 존재하는 차량 번호입니다. (회사 ID: ${authCompanyId}, 차량 번호: ${carRecordDto.carNumber})`,
+              ],
+            });
+            return;
+          }
+          const carToCreate: Prisma.CarCreateManyInput = {
+            carNumber: carRecordDto.carNumber,
+            manufacturer: carRecordDto.manufacturer,
+            model: carRecordDto.model,
+            type: prismaCarType,
+            manufacturingYear: carRecordDto.manufacturingYear,
+            mileage: carRecordDto.mileage,
+            price: new Prisma.Decimal(carRecordDto.price),
+            accidentCount: carRecordDto.accidentCount || 0,
+            explanation: carRecordDto.explanation,
+            accidentDetails: carRecordDto.accidentDetails,
+            companyId: authCompanyId, // 회사 ID 추가
+          };
+
+          recordsToInsert.push(carToCreate);
+
+          if (recordsToInsert.length >= BATCH_SIZE) {
+            parser.pause();
+            await this.processBatch(recordsToInsert, failedRecords);
+            recordsToInsert.length = 0;
+            parser.resume();
+          }
+        })
+        .on('end', async () => {
+          if (recordsToInsert.length > 0) {
+            await this.processBatch(recordsToInsert, failedRecords);
+          }
+
+          let message = 'CSV 파일 처리가 완료되었습니다.';
+          if (failedRecords.length > 0) {
+            message += ` ${failedRecords.length}개의 레코드 처리에 실패했습니다.`;
+            console.warn(`CSV Upload Failed Records for company ${authCompanyId}:`, failedRecords);
+          }
+
+          resolve({ message });
+        })
+        .on('error', (err) => {
+          console.error('CSV Parsing Error:', err);
+          reject(new AppError(`CSV 파싱 중 오류 발생: ${err.message}`, 500));
+        });
+    });
+  }
+
+  private async processBatch(
+    batch: Prisma.CarCreateManyInput[],
+    failedRecords: any[],
+  ): Promise<void> {
+    if (batch.length === 0) {
+      return;
+    }
+
+    try {
+      const result = await this.carRepository.createMany(batch);
+      console.log(`Batch inserted: ${result.count} records.`);
+    } catch (dbError: any) {
+      console.error('Batch DB insertion failed:', dbError);
+      batch.forEach((record) => {
+        failedRecords.push({
+          record,
+          errors: [`DB 삽입 실패: ${dbError.message}`],
+        });
+      });
+    }
+  }
+
+  async getCarModelList(): Promise<CarModelListResponseDto> {
+    // 중복되지 않는 제조사-모델 쌍 가져오기
+    const distinctCarPairs = await this.carRepository.findManyCarModel();
+
+    const manufacturerMap = distinctCarPairs.reduce((acc, pair) => {
+      const { manufacturer, model } = pair;
+
+      // Map에 해당 제조사가 없으면 빈 배열로 초기화하고, 모델 추가
+      if (!acc.has(manufacturer)) {
+        acc.set(manufacturer, []);
+      }
+      acc.get(manufacturer)?.push(model);
+      return acc;
+    }, new Map<string, string[]>());
+
+    // ResponseDTO 형식으로 변환
+    const data: CarModelOfManufacturer[] = Array.from(manufacturerMap.entries()).map(
+      ([manufacturer, models]) => ({
+        manufacturer,
+        model: models.sort(), // 모델 목록을 알파벳 순으로 정렬
+      }),
+    );
+
+    data.sort((a, b) => a.manufacturer.localeCompare(b.manufacturer));
+
+    return { data };
   }
 }
