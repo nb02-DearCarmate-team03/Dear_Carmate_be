@@ -8,4 +8,3 @@ export enum AgeGroup {
   SEVENTIES = 'seventies',
   EIGHTIES = 'eighties',
 }
-export default AgeGroup;
