@@ -49,8 +49,6 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
       lastLoginAt,
       createdAt,
       updatedAt,
-      password,
-      refreshToken,
     } = decoded as Express.User;
 
     if (id && email && name) {
@@ -67,8 +65,6 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
         lastLoginAt,
         createdAt,
         updatedAt,
-        password,
-        refreshToken,
       };
       next();
     } else {

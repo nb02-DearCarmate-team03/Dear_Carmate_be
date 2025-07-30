@@ -1,5 +1,3 @@
-/// <reference types="express" />
-
 import type { User as PrismaUser } from '@prisma/client';
 
 type AuthUser = Pick<
@@ -20,19 +18,17 @@ type AuthUser = Pick<
 
 declare global {
   namespace Express {
-    interface User extends AuthUser {
+    interface User extends Partial<AuthUser> {
       password?: string;
       refreshToken?: string;
     }
 
     interface Request {
       user?: User;
-      cookies: Partial<{
-        accessToken: string;
-        refreshToken: string;
-      }>;
+      cookies: {
+        accessToken?: string;
+        refreshToken?: string;
+      };
     }
   }
 }
-
-export {};
