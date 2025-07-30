@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import DashboardController from './controller';
+import { authenticateJWT } from '../middlewares/auth.middleware';
 
 const router = Router();
 
 /**
- * GET /dashboard/summary
+ * GET /dashboard
  *
  * 대시보드 요약 통계 조회
  *
@@ -16,6 +17,6 @@ const router = Router();
  * @access Private (JWT 인증 필요)
  * @returns 200 OK + SummaryResponseDto JSON
  */
-router.get('/summary', DashboardController.getSummary);
+router.get('/', authenticateJWT, DashboardController.getSummary);
 
 export default router;

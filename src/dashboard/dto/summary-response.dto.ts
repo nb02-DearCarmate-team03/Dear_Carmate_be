@@ -1,6 +1,7 @@
 import { IsNumber, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CarTypeCountDto } from './car-type-count.dto';
+import { SalesByCarTypeDto } from './sales-by-car-type.dto';
 
 export class SummaryResponseDto {
   @IsNumber()
@@ -25,6 +26,6 @@ export class SummaryResponseDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CarTypeCountDto)
-  salesByCarType: CarTypeCountDto[];
+  @Type(() => SalesByCarTypeDto)
+  salesByCarType: SalesByCarTypeDto[];
 }

@@ -2,16 +2,18 @@
 
 import { IsEnum, IsNumber } from 'class-validator';
 import { CarType } from '../../common/enums/car-type.enum';
+
 /**
  * 차량 타입별 매출 정보
  *
  * - carType: 차량 분류 (SUV, SEDAN 등)
- * - count: 해당 타입 차량들의 총 매출액
+ * - amount: 해당 타입 차량들의 **총 매출액**
+ *   (※ revenue로 원하면 amount 대신 revenue도 가능!)
  */
 export class SalesByCarTypeDto {
   @IsEnum(CarType)
   carType: CarType;
 
   @IsNumber()
-  count: number;
+  amount: number; // 또는 revenue: number;
 }

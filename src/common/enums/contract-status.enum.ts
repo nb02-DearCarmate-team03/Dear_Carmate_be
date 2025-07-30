@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 export enum ContractStatus {
-  CHECKING = 'checking', //  차량 확인
-  NEGOTIATING = 'negotiating', // 가격 협의
-  SUCCESS = 'success', //  계약 성공
-  FAILURE = 'failure', //  계약 실패
+  CHECKING = 'checking',
+  NEGOTIATING = 'negotiating',
+  SUCCESS = 'success',
+  FAILURE = 'failure',
 }
-export default ContractStatus;

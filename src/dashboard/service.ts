@@ -63,7 +63,7 @@ class DashboardService {
     const salesByCarType: SalesByCarTypeDto[] = Object.entries(salesByCarTypeRaw).map(
       ([carType, totalPrice]) => ({
         carType: carType as CarType,
-        count: totalPrice,
+        amount: totalPrice,
       }),
     );
 
