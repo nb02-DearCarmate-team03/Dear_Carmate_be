@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthRequest } from 'src/middlewares/auth.middleware';
+import { UnauthorizedError } from 'src/middlewares/error.middleware';
 import { CreateCarDTO } from './dto/create-car.dto';
 import CarService from './service';
 import { CarListQueryDto } from './dto/get-car.dto';
@@ -18,7 +19,7 @@ export default class CarController {
       const companyId = Number(req.user?.companyId);
 
       if (!companyId) {
-        return res.status(400).json({ error: '회사 ID가 필요합니다.' });
+        throw new UnauthorizedError('권한이 없습니다.');
       }
 
       const newCar = await this.carService.createCar(data, companyId);
@@ -48,11 +49,45 @@ export default class CarController {
       const companyId = Number(req.user?.companyId);
 
       if (!companyId) {
-        return res.status(400).json({ error: '회사 ID가 필요합니다.' });
+        throw new UnauthorizedError('권한이 없습니다.');
       }
 
       const updatedCar = await this.carService.updateCar(data, companyId, carId);
       return res.status(200).json(updatedCar);
+    } catch (error) {
+      next(error);
+      return Promise.resolve();
+    }
+  };
+
+  deleteCar = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const carId = Number(req.params.carId);
+      const companyId = Number(req.user?.companyId);
+
+      if (!companyId) {
+        throw new UnauthorizedError('권한이 없습니다.');
+      }
+
+      const result = await this.carService.deleteCar(carId, companyId);
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+      return Promise.resolve();
+    }
+  };
+
+  getCarDetails = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const carId = Number(req.params.carId);
+      const userId = Number(req.user?.id);
+
+      if (!userId) {
+        throw new UnauthorizedError('로그인이 필요합니다.');
+      }
+
+      const carDetails = await this.carService.getCarDetails(carId, userId);
+      return res.status(200).json(carDetails);
     } catch (error) {
       next(error);
       return Promise.resolve();

@@ -41,6 +41,12 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+export class ForbiddenError extends AppError {
+  constructor(message: string) {
+    super(message, 403);
+  }
+}
+
 // 통합 에러 핸들러
 export default function errorHandler(
   err: CustomError,

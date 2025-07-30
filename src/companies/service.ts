@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { ConflictError, NotFoundError } from 'src/middlewares/error.middleware';
 import { CompanyOutputDto, CreateCompanyDto } from './dto/create-company.dto';
 import {
   CompanyListQueryDto,
@@ -25,12 +26,12 @@ export default class CompanyService {
     // companyName 중복 체크
     const existingCompanyName = await this.companyRepository.findByName(data.companyName);
     if (existingCompanyName) {
-      throw new Error('이미 존재하는 기업명입니다.');
+      throw new ConflictError('이미 존재하는 기업명입니다.');
     }
     // companyCode 중복 체크
     const existingCompanyCode = await this.companyRepository.findByCode(data.companyCode);
     if (existingCompanyCode) {
-      throw new Error('이미 존재하는 기업코드입니다.');
+      throw new ConflictError('이미 존재하는 기업코드입니다.');
     }
     // 새로운 기업 등록
     const newCompany = await this.companyRepository.create({
@@ -148,28 +149,27 @@ export default class CompanyService {
   async updateCompany(companyId: number, data: UpdateCompanyDto): Promise<CompanyOutputDto> {
     const existingCompany = await this.companyRepository.findById(companyId);
     if (!existingCompany) {
-      throw new Error('회사를 찾을 수 없습니다.');
+      throw new NotFoundError('존재하지 않는 회사입니다');
     }
 
     // companyName 중복 체크
     if (data.companyName && data.companyName !== existingCompany.companyName) {
       const existingCompanyName = await this.companyRepository.findByName(data.companyName);
       if (existingCompanyName) {
-        throw new Error('이미 존재하는 기업명입니다.');
+        throw new ConflictError('이미 존재하는 기업명입니다.');
       }
     }
     // companyCode 중복 체크
     if (data.companyCode && data.companyCode !== existingCompany.companyCode) {
       const existingCompanyCode = await this.companyRepository.findByCode(data.companyCode);
       if (existingCompanyCode) {
-        throw new Error('이미 존재하는 기업코드입니다.');
+        throw new ConflictError('이미 존재하는 기업코드입니다.');
       }
     }
 
-    const updateData: Prisma.CompanyUpdateInput = {
-      companyName: data.companyName,
-      companyCode: data.companyCode,
-    };
+    const updateData: Prisma.CompanyUpdateInput = {};
+    if (data.companyName) updateData.companyName = data.companyName;
+    if (data.companyCode) updateData.companyCode = data.companyCode;
 
     // company 업데이트
     const updatedCompany = await this.companyRepository.updateCompany(companyId, updateData);
@@ -185,7 +185,7 @@ export default class CompanyService {
   async deleteCompany(companyId: number): Promise<{ message: string }> {
     const existingCompany = await this.companyRepository.findById(companyId);
     if (!existingCompany) {
-      throw new Error('회사를 찾을 수 없습니다.');
+      throw new NotFoundError('존재하지 않는 회사입니다');
     }
 
     // 회사 삭제

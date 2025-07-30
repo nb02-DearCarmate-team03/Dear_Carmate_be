@@ -11,21 +11,12 @@ const CompaniesRouter = (companyController: CompanyController): Router => {
   const router = Router();
 
   router.use(authenticateJWT);
-  router.post(
-    '/',
-    authorizeAdmin,
-    validateDto(CreateCompanyDto),
-    companyController.registerCompany,
-  );
+  router.use(authorizeAdmin);
+  router.post('/', validateDto(CreateCompanyDto), companyController.registerCompany);
   router.get('/', validateDto(CompanyListQueryDto), companyController.getCompanyList);
   router.get('/users', validateDto(UserListQueryDto), companyController.getUserList);
-  router.patch(
-    '/:companyId',
-    authorizeAdmin,
-    validateDto(UpdateCompanyDto),
-    companyController.updateCompany,
-  );
-  router.delete('/:companyId', authorizeAdmin, companyController.deleteCompany);
+  router.patch('/:companyId', validateDto(UpdateCompanyDto), companyController.updateCompany);
+  router.delete('/:companyId', companyController.deleteCompany);
 
   return router;
 };

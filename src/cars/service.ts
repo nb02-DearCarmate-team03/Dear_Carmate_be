@@ -1,4 +1,11 @@
 import { Prisma, CarType, CarStatus } from '@prisma/client';
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from 'src/middlewares/error.middleware';
 import { CarResponseDto, CreateCarDTO } from './dto/create-car.dto';
 import CarRepository from './repository';
 import { CarListQueryDto, CarListResponseDto, FindManyCarOptions } from './dto/get-car.dto';
@@ -15,7 +22,7 @@ export default class CarService {
     // 차량 번호 중복 체크
     const existingCar = await this.carRepository.findByCarNumber(companyId, data.carNumber);
     if (existingCar) {
-      throw new Error('이미 존재하는 차량 번호입니다.');
+      throw new ConflictError('이미 존재하는 차량 번호입니다.');
     }
 
     // 차량 유형 매핑
@@ -37,7 +44,7 @@ export default class CarService {
         prismaCarType = CarType.SUV;
         break;
       default:
-        throw new Error(`유효하지 않은 차량 유형: ${data.type}`);
+        throw new BadRequestError(`유효하지 않은 차량 유형: ${data.type}`);
     }
 
     const newCar = await this.carRepository.create({
@@ -127,12 +134,12 @@ export default class CarService {
     // 차량 존재 여부 확인
     const existingCar = await this.carRepository.findById(carId);
     if (!existingCar) {
-      throw new Error('존재하지 않는 차량입니다.');
+      throw new NotFoundError('존재하지 않는 차량입니다.');
     }
 
     // 회사 소속 차량인지 확인
     if (existingCar.companyId !== companyId) {
-      throw new Error('회사에 소속된 차량이 아닙니다.');
+      throw new ForbiddenError('회사에 소속된 차량이 아닙니다.');
     }
 
     // 업데이트할 데이터 준비
@@ -145,7 +152,7 @@ export default class CarService {
         data.carNumber,
       );
       if (existingCarByNumber) {
-        throw new Error('이미 존재하는 차량 번호입니다.');
+        throw new ConflictError('이미 존재하는 차량 번호입니다.');
       }
       updateData.carNumber = data.carNumber;
     }
@@ -170,7 +177,7 @@ export default class CarService {
           prismaCarType = CarType.SUV;
           break;
         default:
-          throw new Error(`유효하지 않은 차량 유형: ${data.type}`);
+          throw new BadRequestError(`유효하지 않은 차량 유형: ${data.type}`);
       }
       updateData.type = prismaCarType;
     }
@@ -200,6 +207,48 @@ export default class CarService {
       explanation: updatedCar.explanation,
       accidentDetails: updatedCar.accidentDetails,
       status: updatedCar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+    };
+  }
+
+  async deleteCar(carId: number, companyId: number): Promise<{ message: string }> {
+    // 차량 존재 여부 확인
+    const existingCar = await this.carRepository.findById(carId);
+    if (!existingCar) {
+      throw new NotFoundError('존재하지 않는 차량입니다.');
+    }
+
+    // 회사 소속 차량인지 확인
+    if (existingCar.companyId !== companyId) {
+      throw new ForbiddenError('회사에 소속된 차량이 아닙니다.');
+    }
+
+    await this.carRepository.delete(carId, companyId);
+    return { message: '차량 삭제 성공' };
+  }
+
+  async getCarDetails(carId: number, userId: number): Promise<CarResponseDto> {
+    // 로그인 확인
+    if (!userId) {
+      throw new UnauthorizedError('로그인이 필요합니다.');
+    }
+    const detailcar = await this.carRepository.findById(carId);
+    if (!detailcar) {
+      throw new NotFoundError('존재하지 않는 차량입니다');
+    }
+    // 차량 정보 반환
+    return {
+      id: detailcar.id,
+      carNumber: detailcar.carNumber,
+      manufacturer: detailcar.manufacturer,
+      model: detailcar.model,
+      type: detailcar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      manufacturingYear: detailcar.manufacturingYear,
+      mileage: detailcar.mileage,
+      price: detailcar.price.toNumber(),
+      accidentCount: detailcar.accidentCount,
+      explanation: detailcar.explanation,
+      accidentDetails: detailcar.accidentDetails,
+      status: detailcar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
     };
   }
 }

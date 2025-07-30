@@ -13,6 +13,8 @@ const CarsRouter = (carController: CarController): Router => {
   router.post('/', validateDto(CreateCarDTO), carController.createCar);
   router.get('/', validateDto(CarListQueryDto), carController.getCarList);
   router.patch('/:carId', validateDto(UpdateCarDto), carController.updateCar);
+  router.delete('/:carId', carController.deleteCar);
+  router.get('/:carId', carController.getCarDetails);
 
   return router;
 };

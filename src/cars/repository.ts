@@ -50,4 +50,20 @@ export default class CarRepository {
       data,
     });
   }
+
+  async delete(carId: number, companyId: number) {
+    return this.prisma.car.delete({
+      where: {
+        id: carId,
+        companyId,
+      },
+    });
+  }
+
+  async createMany(data: Prisma.CarCreateManyInput[]): Promise<Prisma.BatchPayload> {
+    return this.prisma.car.createMany({
+      data,
+      skipDuplicates: true, // 중복된 레코드 건너뛰기
+    });
+  }
 }
