@@ -1,34 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
-import { DashboardService } from './service';
-import { DashboardRepository } from './repository';
 import { SummaryResponseDto } from './dto/summary-response.dto';
-import prisma from '../common/prisma/client'; // PrismaClient 인스턴스
+import { DashboardService } from './service';
 
-class DashboardController {
-  /**
-   * 대시보드 요약 통계를 조회합니다.
-   *
-   * @route GET /dashboard/summary
-   * @access Private (JWT 인증 필요)
-   */
-  static async getSummary(req: Request, res: Response, next: NextFunction): Promise<void> {
+export class DashboardController {
+  constructor(private readonly dashboardService: DashboardService) {
+    // constructor는 DashboardService 의존성 주입 용도로 사용됩니다.
+  }
+
+  async getSummary(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const companyId = (req as any).user?.companyId;
+      const companyId = req.user?.companyId;
 
       if (!companyId) {
         res.status(400).json({ message: '회사 정보가 없습니다.' });
         return;
       }
 
-      const repository = new DashboardRepository(prisma);
-      const dashboardService = new DashboardService(repository);
-
-      const summary: SummaryResponseDto = await dashboardService.getSummary(companyId);
+      const summary: SummaryResponseDto = await this.dashboardService.getSummary(companyId);
       res.status(200).json(summary);
-    } catch (error: unknown) {
+    } catch (error) {
       next(error);
     }
   }
 }
-
-export default DashboardController;

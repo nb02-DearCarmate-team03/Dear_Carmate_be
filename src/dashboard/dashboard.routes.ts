@@ -1,22 +1,18 @@
 import { Router } from 'express';
-import DashboardController from './controller';
 import { authenticateJWT } from '../middlewares/auth.middleware';
+import { DashboardRepository } from './repository';
+import { DashboardService } from './service';
+import { DashboardController } from './controller';
+import prisma from '../common/prisma/client';
 
 const router = Router();
 
-/**
- * GET /dashboard
- *
- * 대시보드 요약 통계 조회
- *
- * - 이 달의 매출
- * - 계약 진행 중인 수
- * - 계약 성공한 수
- * - 차량 타입별 계약 수 & 매출액
- *
- * @access Private (JWT 인증 필요)
- * @returns 200 OK + SummaryResponseDto JSON
- */
-router.get('/', authenticateJWT, DashboardController.getSummary);
+// 의존성 생성 및 주입
+const dashboardRepository = new DashboardRepository(prisma);
+const dashboardService = new DashboardService(dashboardRepository);
+const dashboardController = new DashboardController(dashboardService);
+
+// 라우팅
+router.get('/summary', authenticateJWT, dashboardController.getSummary.bind(dashboardController));
 
 export default router;

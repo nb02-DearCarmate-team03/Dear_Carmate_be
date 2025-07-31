@@ -89,7 +89,7 @@ export class DashboardRepository {
   /**
    * 차량 타입별 계약 수
    */
-  async getContractsByCarType(companyId: number): Promise<Record<string, number>> {
+  async getContractsByCarType(companyId: number): Promise<Record<CarType, number>> {
     const cars = await this.prisma.car.findMany({
       where: {
         companyId,
@@ -106,18 +106,18 @@ export class DashboardRepository {
 
     return cars.reduce(
       (acc, car) => {
-        const typeKey = car.type ?? 'UNKNOWN';
+        const typeKey = (car.type ?? 'UNKNOWN') as CarType;
         acc[typeKey] = (acc[typeKey] || 0) + car.contracts.length;
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<CarType, number>,
     );
   }
 
   /**
    * 차량 타입별 매출액 합산
    */
-  async getSalesByCarType(companyId: number): Promise<Record<string, number>> {
+  async getSalesByCarType(companyId: number): Promise<Record<CarType, number>> {
     const cars = await this.prisma.car.findMany({
       where: {
         companyId,
@@ -137,7 +137,7 @@ export class DashboardRepository {
 
     return cars.reduce(
       (acc, car) => {
-        const typeKey = car.type as CarType;
+        const typeKey = (car.type ?? 'UNKNOWN') as CarType;
         const total = car.contracts.reduce(
           (sum, contract) => sum + (contract.contractPrice?.toNumber() ?? 0),
           0,
