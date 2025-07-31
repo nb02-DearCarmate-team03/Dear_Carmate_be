@@ -1,10 +1,28 @@
-import express from 'express';
+import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
 import UserController from './controller';
+import UserService from './service';
+import UserRepository from './repository';
 import validateDto from '../common/utils/validate.dto';
 import RegisterDto from './dto/create-user.dto';
+import UpdateUserDto from './dto/update-user.dto';
+import isAuthenticated from '../auth/auth';
+import { authorizeAdmin } from '../middlewares/auth.middleware';
 
-const router = express.Router();
+const userRouter = (prisma: PrismaClient): Router => {
+  const router = Router();
 
-router.post('/users', validateDto(RegisterDto), UserController.register);
+  const userRepository = new UserRepository(prisma);
+  const userService = new UserService(userRepository);
+  const userController = new UserController(userService);
 
-export default router;
+  router.post('/', validateDto(RegisterDto), userController.register);
+  router.get('/me', isAuthenticated, userController.getInfo);
+  router.patch('/me', isAuthenticated, validateDto(UpdateUserDto), userController.updateProfile);
+  router.delete('/me', isAuthenticated, userController.deleteUser);
+  router.delete('/:userId', isAuthenticated, authorizeAdmin, userController.deleteUserId);
+
+  return router;
+};
+
+export default userRouter;
