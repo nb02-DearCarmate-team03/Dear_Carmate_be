@@ -8,9 +8,9 @@ import prisma from './common/prisma/client';
 
 const router = express.Router();
 
-router.use('/users', userRouter);
+router.use('/users', userRouter(prisma));
 router.use('/companies', companiesRouter);
-router.use('/auth', authRouter);
+router.use('/auth', authRouter(prisma));
 router.use('/customers', createCustomerRoutes(prisma));
 
 export default router;
