@@ -2,8 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import { SummaryResponseDto } from './dto/summary-response.dto';
 import { DashboardService } from './service';
 
-const createDashboardController = (dashboardService: DashboardService) => {
-  const getSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export class DashboardController {
+  constructor(private readonly dashboardService: DashboardService) {
+    // DashboardService 의존성 주입
+  }
+
+  /**
+   * 대시보드 요약 통계 조회
+   */
+  getSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const companyId = req.user?.companyId;
 
@@ -12,16 +19,10 @@ const createDashboardController = (dashboardService: DashboardService) => {
         return;
       }
 
-      const summary: SummaryResponseDto = await dashboardService.getSummary(companyId);
+      const summary: SummaryResponseDto = await this.dashboardService.getSummary(companyId);
       res.status(200).json(summary);
     } catch (error) {
       next(error);
     }
   };
-
-  return {
-    getSummary,
-  };
-};
-
-export default createDashboardController;
+}
