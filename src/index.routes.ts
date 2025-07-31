@@ -10,10 +10,9 @@ import CarsRouter from './cars/cars.routes';
 
 const router = express.Router();
 
-router.use('/companies', companiesRouter);
-router.use('/users', userRouter);
+router.use('/auth', authRouter(prisma));
+router.use('/users', userRouter(prisma));
 router.use('/companies', companiesRouter(prisma));
-router.use('/auth', authRouter);
 router.use('/customers', createCustomerRoutes(prisma));
 router.use('/cars', CarsRouter(prisma));
 router.use('/dashboard', dashboardRouter(prisma));
