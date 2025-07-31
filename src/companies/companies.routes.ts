@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
 import CompanyController from './controller';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -6,9 +7,15 @@ import { CompanyListQueryDto } from './dto/get-companies.dto';
 import { UserListQueryDto } from './dto/get-users.dto';
 import UpdateCompanyDto from './dto/update-companies.dto';
 import { authenticateJWT, authorizeAdmin } from '../middlewares/auth.middleware';
+import CompanyRepository from './repository';
+import CompanyService from './service';
 
-const CompaniesRouter = (companyController: CompanyController): Router => {
+const CompaniesRouter = (prisma: PrismaClient): Router => {
   const router = Router();
+
+  const companyRepository = new CompanyRepository(prisma);
+  const companyService = new CompanyService(companyRepository);
+  const companyController = new CompanyController(companyService);
 
   router.use(authenticateJWT);
   router.use(authorizeAdmin);

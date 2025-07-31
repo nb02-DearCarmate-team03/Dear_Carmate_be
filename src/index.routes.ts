@@ -11,9 +11,9 @@ const router = express.Router();
 
 router.use('/companies', companiesRouter);
 router.use('/users', userRouter);
-router.use('/companies', companiesRouter);
+router.use('/companies', companiesRouter(prisma));
 router.use('/auth', authRouter);
 router.use('/customers', createCustomerRoutes(prisma));
-router.use('/cars', CarsRouter);
+router.use('/cars', CarsRouter(prisma));
 
 export default router;

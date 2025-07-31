@@ -1,13 +1,20 @@
 import { Router } from 'express';
 import { authenticateJWT } from 'src/middlewares/auth.middleware';
 import validateDto from 'src/common/utils/validate.dto';
+import { PrismaClient } from '@prisma/client';
+import CarService from './service';
 import CarController, { upload } from './controller';
 import { CreateCarDTO } from './dto/create-car.dto';
 import { CarListQueryDto } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
+import CarRepository from './repository';
 
-const CarsRouter = (carController: CarController): Router => {
+const CarsRouter = (prisma: PrismaClient): Router => {
   const router = Router();
+
+  const carRepository = new CarRepository(prisma);
+  const carService = new CarService(carRepository);
+  const carController = new CarController(carService);
 
   router.use(authenticateJWT);
   router.post('/', validateDto(CreateCarDTO), carController.createCar);
