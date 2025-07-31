@@ -48,8 +48,8 @@ export default class CompanyService {
   }
 
   async getCompanyList(query: CompanyListQueryDto): Promise<CompanyListResponseDto> {
-    const { page, pageSize } = query;
-
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 8;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
@@ -89,8 +89,8 @@ export default class CompanyService {
   }
 
   async getCompanyUsers(query: UserListQueryDto): Promise<UserListResponseDto> {
-    const { page, pageSize } = query;
-
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 8;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 

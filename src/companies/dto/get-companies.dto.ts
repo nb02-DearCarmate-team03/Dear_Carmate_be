@@ -4,8 +4,8 @@ import { IsIn, IsNumber, IsOptional, IsString, Length, Max, Min } from 'class-va
 import { CompanyOutputDto } from './create-company.dto';
 
 export type FindManyCompanyOptions = {
-  skip?: number;
-  take?: number;
+  skip: number;
+  take: number;
   orderBy?: Prisma.CompanyOrderByWithRelationInput;
   where?: Prisma.CompanyWhereInput;
 };
