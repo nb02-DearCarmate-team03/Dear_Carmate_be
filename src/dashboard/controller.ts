@@ -2,12 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { SummaryResponseDto } from './dto/summary-response.dto';
 import { DashboardService } from './service';
 
-export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {
-    // constructor는 DashboardService 의존성 주입 용도로 사용됩니다.
-  }
-
-  async getSummary(req: Request, res: Response, next: NextFunction): Promise<void> {
+const createDashboardController = (dashboardService: DashboardService) => {
+  const getSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const companyId = req.user?.companyId;
 
@@ -16,10 +12,16 @@ export class DashboardController {
         return;
       }
 
-      const summary: SummaryResponseDto = await this.dashboardService.getSummary(companyId);
+      const summary: SummaryResponseDto = await dashboardService.getSummary(companyId);
       res.status(200).json(summary);
     } catch (error) {
       next(error);
     }
-  }
-}
+  };
+
+  return {
+    getSummary,
+  };
+};
+
+export default createDashboardController;

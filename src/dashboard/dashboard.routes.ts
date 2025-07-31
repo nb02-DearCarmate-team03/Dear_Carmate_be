@@ -1,18 +1,18 @@
 import { Router } from 'express';
-import { authenticateJWT } from '../middlewares/auth.middleware';
+import { PrismaClient } from '@prisma/client';
 import { DashboardRepository } from './repository';
 import { DashboardService } from './service';
-import { DashboardController } from './controller';
-import prisma from '../common/prisma/client';
+import createDashboardController from './controller';
+import { authenticateJWT } from '../middlewares/auth.middleware';
 
-const router = Router();
+export const dashboardRouter = (prisma: PrismaClient): Router => {
+  const router = Router();
 
-// 의존성 생성 및 주입
-const dashboardRepository = new DashboardRepository(prisma);
-const dashboardService = new DashboardService(dashboardRepository);
-const dashboardController = new DashboardController(dashboardService);
+  const dashboardRepository = new DashboardRepository(prisma);
+  const dashboardService = new DashboardService(dashboardRepository);
+  const dashboardController = createDashboardController(dashboardService);
 
-// 라우팅
-router.get('/summary', authenticateJWT, dashboardController.getSummary.bind(dashboardController));
+  router.get('/summary', authenticateJWT, dashboardController.getSummary);
 
-export default router;
+  return router;
+};
