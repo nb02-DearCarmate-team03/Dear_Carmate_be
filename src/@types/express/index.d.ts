@@ -18,9 +18,12 @@ type AuthUser = Pick<
 
 declare global {
   namespace Express {
-    interface User extends AuthUser {
-      password: string;
-      refreshToken?: string;
+    interface User extends Partial<AuthUser> {
+      id: number;
+      email: string;
+      name: string;
+      isAdmin: boolean;
+      companyId: number;
     }
 
     interface Request {
