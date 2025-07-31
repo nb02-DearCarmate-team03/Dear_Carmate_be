@@ -1,4 +1,5 @@
 import { PrismaClient, ContractStatus } from '@prisma/client';
+import { CarType } from 'src/common/enums/car-type.enum';
 
 export class DashboardRepository {
   constructor(private readonly prisma: PrismaClient) {
@@ -136,7 +137,7 @@ export class DashboardRepository {
 
     return cars.reduce(
       (acc, car) => {
-        const typeKey = car.type ?? 'UNKNOWN';
+        const typeKey = car.type as CarType;
         const total = car.contracts.reduce(
           (sum, contract) => sum + (contract.contractPrice?.toNumber() ?? 0),
           0,
@@ -144,7 +145,7 @@ export class DashboardRepository {
         acc[typeKey] = (acc[typeKey] || 0) + total;
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<CarType, number>,
     );
   }
 }
