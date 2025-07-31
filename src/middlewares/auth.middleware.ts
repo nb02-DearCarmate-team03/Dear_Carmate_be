@@ -13,8 +13,12 @@ export interface User {
   isAdmin: boolean;
   companyId: number;
 }
+// AuthRequest 인터페이스 추가
+export interface AuthRequest extends Request {
+  user?: User;
+}
 
-export const authenticateJWT = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction): void => {
   try {
     const { authorization: authHeader } = req.headers;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -54,7 +58,7 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
   }
 };
 
-export const authorizeAdmin = (req: Request, res: Response, next: NextFunction): void => {
+export const authorizeAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
     res.status(401).json({ message: '인증이 필요합니다.' });
     return;
