@@ -34,8 +34,8 @@ export class CarListQueryDto {
 }
 
 export type FindManyCarOptions = {
-  skip?: number;
-  take?: number;
+  skip: number;
+  take: number;
   orderBy?: Prisma.CarOrderByWithRelationInput;
   where?: Prisma.CarWhereInput;
 };

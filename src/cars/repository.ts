@@ -33,9 +33,9 @@ export default class CarRepository {
 
   async findManyCar(options: FindManyCarOptions) {
     return this.prisma.car.findMany({
-      skip: options.skip,
-      take: options.take,
-      where: options.where,
+      skip: options.skip ?? 0,
+      take: options.take ?? 0,
+      where: options.where ?? {},
       orderBy: options.orderBy || { id: 'asc' },
     });
   }
