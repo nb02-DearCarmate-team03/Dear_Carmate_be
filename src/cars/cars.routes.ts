@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import validateDto from 'src/common/utils/validate.dto';
 import { PrismaClient } from '@prisma/client';
-import isAuthenticated from 'src/auth/auth';
+import isAuthenticated from '../auth/auth';
+import validateDto from '../common/utils/validate.dto';
 import CarService from './service';
 import CarController, { upload } from './controller';
 import { CreateCarDTO } from './dto/create-car.dto';

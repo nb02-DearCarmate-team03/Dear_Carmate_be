@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import isAuthenticated from 'src/auth/auth';
+import isAuthenticated from '../auth/auth';
 import CompanyController from './controller';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCompanyDto } from './dto/create-company.dto';
