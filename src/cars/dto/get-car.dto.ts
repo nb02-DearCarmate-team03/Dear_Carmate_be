@@ -1,16 +1,9 @@
 import { Type } from 'class-transformer';
-import { Prisma } from '@prisma/client';
 import { IsIn, IsNumber, IsOptional, IsString, Length, Max, Min } from 'class-validator';
-import { CompanyOutputDto } from './create-company.dto';
+import { Prisma } from '@prisma/client';
+import { CarResponseDto } from './create-car.dto';
 
-export type FindManyCompanyOptions = {
-  skip: number;
-  take: number;
-  orderBy?: Prisma.CompanyOrderByWithRelationInput;
-  where?: Prisma.CompanyWhereInput;
-};
-
-export class CompanyListQueryDto {
+export class CarListQueryDto {
   @Type(() => Number)
   @IsNumber({}, { message: '페이지는 숫자여야 합니다.' })
   @Min(1, { message: '페이지는 1 이상이어야 합니다.' })
@@ -23,19 +16,33 @@ export class CompanyListQueryDto {
   pageSize: number = 8;
 
   @IsOptional()
+  @IsString({ message: '상태는 문자열이어야 합니다.' })
+  @IsIn(['possession', 'contractProceeding', 'contractCompleted'], {
+    message: '보유중, 계약 진행중, 계약 완료 중 하나여야 합니다.',
+  })
+  status?: 'possession' | 'contractProceeding' | 'contractCompleted';
+
+  @IsOptional()
   @IsString({ message: '검색 기준은 문자열이어야 합니다.' })
-  @IsIn(['companyName'], { message: ' 검색 기준은 기업명만 가능합니다.' })
-  searchBy?: 'companyName';
+  @IsIn(['carNumber', 'model'], { message: ' 검색은 차량번호, 차량모델만 가능합니다.' })
+  searchBy?: 'carNumber' | 'model';
 
   @IsOptional()
   @IsString({ message: '검색어는 문자열이어야 합니다.' })
-  @Length(1, 20, { message: '검색어는 1자 이상 20자 이하여야 합니다.' })
+  @Length(1, 100, { message: '검색어는 1자 이상 100자 이하여야 합니다.' })
   keyword?: string;
 }
 
-export interface CompanyListResponseDto {
+export type FindManyCarOptions = {
+  skip: number;
+  take: number;
+  orderBy?: Prisma.CarOrderByWithRelationInput;
+  where?: Prisma.CarWhereInput;
+};
+
+export interface CarListResponseDto {
   currentPage: number;
   totalPages: number;
   totalItemCount: number;
-  data: CompanyOutputDto[];
+  data: CarResponseDto[];
 }

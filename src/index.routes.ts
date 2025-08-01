@@ -6,13 +6,15 @@ import companiesRouter from './companies/companies.routes';
 import createCustomerRoutes from './customers/customers.routes';
 import { dashboardRouter } from './dashboard/dashboard.routes';
 import prisma from './common/prisma/client';
+import carsRouter from './cars/cars.routes';
 
 const router = express.Router();
 
-router.use('/users', userRouter(prisma));
-router.use('/companies', companiesRouter);
 router.use('/auth', authRouter(prisma));
+router.use('/users', userRouter(prisma));
+router.use('/companies', companiesRouter(prisma));
 router.use('/customers', createCustomerRoutes(prisma));
+router.use('/cars', carsRouter(prisma));
 router.use('/dashboard', dashboardRouter(prisma));
 
 export default router;

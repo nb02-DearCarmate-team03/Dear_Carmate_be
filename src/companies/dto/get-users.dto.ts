@@ -3,8 +3,8 @@ import { Prisma } from '@prisma/client';
 import { IsIn, IsNumber, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export type FindManyUserOptions = {
-  skip?: number;
-  take?: number;
+  skip: number;
+  take: number;
   orderBy?: Prisma.UserOrderByWithRelationInput;
   where?: Prisma.UserWhereInput;
 };

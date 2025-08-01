@@ -40,9 +40,9 @@ export default class CompanyRepository {
 
   async findManyCompany(options: FindManyCompanyOptions) {
     return this.prisma.company.findMany({
-      skip: options.skip,
-      take: options.take,
-      where: options.where,
+      skip: options.skip ?? 0,
+      take: options.take ?? 0,
+      where: options.where ?? {},
       include: {
         _count: {
           select: { users: true },
@@ -58,9 +58,9 @@ export default class CompanyRepository {
 
   async findManyUser(options: FindManyUserOptions) {
     return this.prisma.user.findMany({
-      skip: options.skip,
-      take: options.take,
-      where: options.where,
+      skip: options.skip ?? 0,
+      take: options.take ?? 0,
+      where: options.where ?? {},
       include: {
         company: {
           select: {
