@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authenticateJWT } from 'src/middlewares/auth.middleware';
 import validateDto from 'src/common/utils/validate.dto';
 import { PrismaClient } from '@prisma/client';
+import isAuthenticated from 'src/auth/auth';
 import CarService from './service';
 import CarController, { upload } from './controller';
 import { CreateCarDTO } from './dto/create-car.dto';
@@ -16,7 +16,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
   const carService = new CarService(carRepository);
   const carController = new CarController(carService);
 
-  router.use(authenticateJWT);
+  router.use(isAuthenticated);
   router.post('/', validateDto(CreateCarDTO), carController.createCar);
   router.get('/', validateDto(CarListQueryDto), carController.getCarList);
   router.patch('/:carId', validateDto(UpdateCarDto), carController.updateCar);
