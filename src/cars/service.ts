@@ -304,8 +304,7 @@ export default class CarService {
            * 'UploadCarDto' 클래스 인스턴스로 변환
            * 해당 과정이 있어야 유효성 검사가 가능해짐
            *
-           * 유효성 검사 실패 시 'failedRecords'에 추가, 'parser.resume()'으로
-           * 스트림을 재개하고 다음 레코드 처리를 진행
+           * 유효성 검사 실패 시 'failedRecords'에 추가
            */
           try {
             const carRecordDto = plainToInstance(UploadCarDto, record);
@@ -317,14 +316,13 @@ export default class CarService {
                 record,
                 errors: errors.map((err) => Object.values(err.constraints || {})).flat(),
               });
-              parser.resume();
               return;
             }
 
             /**
              * CSV 파일의 문자열을
              * Prisma에서 사용하는 Enum으로 변환
-             * 정의되지 않은 차량 유형일 경우 오류로 처리, 다음 레코드 진행
+             * 정의되지 않은 차량 유형일 경우 오류로 처리
              */
             let prismaCarType: CarType;
             switch (carRecordDto.type) {
@@ -349,7 +347,6 @@ export default class CarService {
                   record,
                   errors: [`유효하지 않은 차량 유형: ${carRecordDto.type}`],
                 });
-                parser.resume();
                 return;
             }
 
@@ -365,7 +362,6 @@ export default class CarService {
                   `이미 존재하는 차량 번호입니다. (회사 ID: ${authCompanyId}, 차량 번호: ${carRecordDto.carNumber})`,
                 ],
               });
-              parser.resume();
               return;
             }
 
