@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
 import { CustomerController } from './controller';
-import { authenticateJWT } from '../middlewares/auth.middleware';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
