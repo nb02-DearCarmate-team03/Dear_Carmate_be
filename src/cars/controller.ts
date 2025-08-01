@@ -38,10 +38,9 @@ export default class CarController {
       }
 
       const newCar = await this.carService.createCar(data, companyId);
-      return res.status(201).json(newCar);
+      res.status(201).json(newCar);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 
@@ -49,11 +48,10 @@ export default class CarController {
     try {
       const query: CarListQueryDto = req.query as unknown as CarListQueryDto;
 
-      const carList = await this.carService.gerCarList(query);
-      return res.status(200).json(carList);
+      const carList = await this.carService.getCarList(query);
+      res.status(200).json(carList);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 
@@ -68,10 +66,9 @@ export default class CarController {
       }
 
       const updatedCar = await this.carService.updateCar(data, companyId, carId);
-      return res.status(200).json(updatedCar);
+      res.status(200).json(updatedCar);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 
@@ -85,10 +82,9 @@ export default class CarController {
       }
 
       const result = await this.carService.deleteCar(carId, companyId);
-      return res.status(200).json(result);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 
@@ -102,10 +98,9 @@ export default class CarController {
       }
 
       const carDetails = await this.carService.getCarDetails(carId, userId);
-      return res.status(200).json(carDetails);
+      res.status(200).json(carDetails);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 
@@ -122,20 +117,18 @@ export default class CarController {
       const authCompanyId = Number(req.user.companyId);
 
       const result = await this.carService.uploadCars(req.file.buffer, authCompanyId);
-      return res.status(200).json(result);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 
   getCarModelList = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const carModelList: CarModelListResponseDto = await this.carService.getCarModelList();
-      return res.status(200).json(carModelList);
+      res.status(200).json(carModelList);
     } catch (error) {
       next(error);
-      return Promise.resolve();
     }
   };
 }
