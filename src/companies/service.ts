@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { ConflictError, NotFoundError } from 'src/middlewares/error.middleware';
+import { ConflictError, NotFoundError } from '../middlewares/error.middleware';
 import { CompanyOutputDto, CreateCompanyDto } from './dto/create-company.dto';
 import {
   CompanyListQueryDto,

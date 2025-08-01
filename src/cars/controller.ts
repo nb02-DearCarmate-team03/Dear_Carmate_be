@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthRequest } from 'src/middlewares/auth.middleware';
-import { BadRequestError, UnauthorizedError } from 'src/middlewares/error.middleware';
 import multer from 'multer';
+import { BadRequestError, UnauthorizedError } from '../middlewares/error.middleware';
 import { CreateCarDTO } from './dto/create-car.dto';
 import CarService, { CarModelListResponseDto } from './service';
 import { CarListQueryDto } from './dto/get-car.dto';

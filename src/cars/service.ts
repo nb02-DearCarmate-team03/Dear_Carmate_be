@@ -1,5 +1,8 @@
 import { Prisma, CarType, CarStatus } from '@prisma/client';
 import { parse } from 'csv-parse';
+import { Readable } from 'stream';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import {
   AppError,
   BadRequestError,
@@ -7,10 +10,7 @@ import {
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
-} from 'src/middlewares/error.middleware';
-import { Readable } from 'stream';
-import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
+} from '../middlewares/error.middleware';
 import { CarResponseDto, CreateCarDTO } from './dto/create-car.dto';
 import CarRepository from './repository';
 import { CarListQueryDto, CarListResponseDto, FindManyCarOptions } from './dto/get-car.dto';
