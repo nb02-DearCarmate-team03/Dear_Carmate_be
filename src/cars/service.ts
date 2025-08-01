@@ -88,7 +88,7 @@ export default class CarService {
     };
   }
 
-  async gerCarList(query: CarListQueryDto): Promise<CarListResponseDto> {
+  async getCarList(query: CarListQueryDto): Promise<CarListResponseDto> {
     const { page, pageSize, status, searchBy, keyword } = query;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
@@ -270,8 +270,11 @@ export default class CarService {
   }
 
   async uploadCars(fileBuffer: Buffer, authCompanyId: number): Promise<{ message: string }> {
+    // 유효성 검사 및 타입 변환이 끝난 후 DB에 삽입 될 record
     const recordsToInsert: Prisma.CarCreateManyInput[] = [];
+    // 실패한 record
     const failedRecords: any[] = [];
+    // CSV 파일의 줄 갯수
     let totalRecords = 0;
 
     const parser = parse({
@@ -281,88 +284,142 @@ export default class CarService {
       trim: true,
     });
 
+    // 데이터(fileBuffer)를 한 줄 씩 읽는 기능
     const readableStream = Readable.from(fileBuffer);
 
     return new Promise((resolve, reject) => {
+      /**
+       * parser.pause()를 사용하여
+       * 한줄의 레코드가 처리될 때까지 일시정지
+       */
       readableStream
         .pipe(parser)
         .on('data', async (record: any) => {
+          parser.pause();
+
           totalRecords += 1;
 
-          const carRecordDto = plainToInstance(UploadCarDto, record);
-          const errors = await validate(carRecordDto);
+          /**
+           * 'plainToInstance'를 사용하여 일반 자바스크립트 객체(record)를
+           * 'UploadCarDto' 클래스 인스턴스로 변환
+           * 해당 과정이 있어야 유효성 검사가 가능해짐
+           *
+           * 유효성 검사 실패 시 'failedRecords'에 추가, 'parser.resume()'으로
+           * 스트림을 재개하고 다음 레코드 처리를 진행
+           */
+          try {
+            const carRecordDto = plainToInstance(UploadCarDto, record);
+            const errors = await validate(carRecordDto);
 
-          if (errors.length > 0) {
-            failedRecords.push({
-              lineNumber: totalRecords,
-              record,
-              errors: errors.map((err) => Object.values(err.constraints || {})).flat(),
-            });
-            return;
-          }
-
-          let prismaCarType: CarType;
-          switch (carRecordDto.type) {
-            case '경·소형':
-              prismaCarType = CarType.COMPACT;
-              break;
-            case '준중·중형':
-              prismaCarType = CarType.MIDSIZE;
-              break;
-            case '대형':
-              prismaCarType = CarType.FULLSIZE;
-              break;
-            case '스포츠카':
-              prismaCarType = CarType.SPORTS;
-              break;
-            case 'SUV':
-              prismaCarType = CarType.SUV;
-              break;
-            default:
+            if (errors.length > 0) {
               failedRecords.push({
                 lineNumber: totalRecords,
                 record,
-                errors: [`유효하지 않은 차량 유형: ${carRecordDto.type}`],
+                errors: errors.map((err) => Object.values(err.constraints || {})).flat(),
               });
+              parser.resume();
               return;
-          }
-          const existingCar = await this.carRepository.findByCarNumber(
-            authCompanyId,
-            carRecordDto.carNumber,
-          );
-          if (existingCar) {
+            }
+
+            /**
+             * CSV 파일의 문자열을
+             * Prisma에서 사용하는 Enum으로 변환
+             * 정의되지 않은 차량 유형일 경우 오류로 처리, 다음 레코드 진행
+             */
+            let prismaCarType: CarType;
+            switch (carRecordDto.type) {
+              case '경·소형':
+                prismaCarType = CarType.COMPACT;
+                break;
+              case '준중·중형':
+                prismaCarType = CarType.MIDSIZE;
+                break;
+              case '대형':
+                prismaCarType = CarType.FULLSIZE;
+                break;
+              case '스포츠카':
+                prismaCarType = CarType.SPORTS;
+                break;
+              case 'SUV':
+                prismaCarType = CarType.SUV;
+                break;
+              default:
+                failedRecords.push({
+                  lineNumber: totalRecords,
+                  record,
+                  errors: [`유효하지 않은 차량 유형: ${carRecordDto.type}`],
+                });
+                parser.resume();
+                return;
+            }
+
+            const existingCar = await this.carRepository.findByCarNumber(
+              authCompanyId,
+              carRecordDto.carNumber,
+            );
+            if (existingCar) {
+              failedRecords.push({
+                lineNumber: totalRecords,
+                record,
+                errors: [
+                  `이미 존재하는 차량 번호입니다. (회사 ID: ${authCompanyId}, 차량 번호: ${carRecordDto.carNumber})`,
+                ],
+              });
+              parser.resume();
+              return;
+            }
+
+            /**
+             * 모든 유효성 검사를 통과한 데이터를
+             * Prisma의 'CarCreateManyInput' 타입에 맞게 최종 객체로 변환
+             */
+            const carToCreate: Prisma.CarCreateManyInput = {
+              carNumber: carRecordDto.carNumber,
+              manufacturer: carRecordDto.manufacturer,
+              model: carRecordDto.model,
+              type: prismaCarType,
+              manufacturingYear: carRecordDto.manufacturingYear,
+              mileage: carRecordDto.mileage,
+              price: new Prisma.Decimal(carRecordDto.price),
+              accidentCount: carRecordDto.accidentCount || 0,
+              explanation: carRecordDto.explanation,
+              accidentDetails: carRecordDto.accidentDetails,
+              companyId: authCompanyId, // 회사 ID 추가
+            };
+
+            recordsToInsert.push(carToCreate);
+
+            /**
+             * 데이터를 BATCH_SIZE만큼 모아서
+             * processBatch 함수로 한번에 처리
+             * 처리 완료 후에는 recordsToInsert 배열을 초기화하여 다음 배치 데이터를 받을 준비함
+             */
+            if (recordsToInsert.length >= BATCH_SIZE) {
+              await this.processBatch(recordsToInsert, failedRecords);
+              recordsToInsert.length = 0;
+            }
+          } catch (error: any) {
+            console.error(`Error processing record on line ${totalRecords}:`, error);
             failedRecords.push({
               lineNumber: totalRecords,
               record,
-              errors: [
-                `이미 존재하는 차량 번호입니다. (회사 ID: ${authCompanyId}, 차량 번호: ${carRecordDto.carNumber})`,
-              ],
+              errors: [`예상치 못한 처리 오류: ${error.message}`],
             });
-            return;
-          }
-          const carToCreate: Prisma.CarCreateManyInput = {
-            carNumber: carRecordDto.carNumber,
-            manufacturer: carRecordDto.manufacturer,
-            model: carRecordDto.model,
-            type: prismaCarType,
-            manufacturingYear: carRecordDto.manufacturingYear,
-            mileage: carRecordDto.mileage,
-            price: new Prisma.Decimal(carRecordDto.price),
-            accidentCount: carRecordDto.accidentCount || 0,
-            explanation: carRecordDto.explanation,
-            accidentDetails: carRecordDto.accidentDetails,
-            companyId: authCompanyId, // 회사 ID 추가
-          };
-
-          recordsToInsert.push(carToCreate);
-
-          if (recordsToInsert.length >= BATCH_SIZE) {
-            parser.pause();
-            await this.processBatch(recordsToInsert, failedRecords);
-            recordsToInsert.length = 0;
+          } finally {
+            // 모든 처리가 완료되면, 다음 레코드를 받기 위해 스트림 재개
             parser.resume();
           }
         })
+        /**
+         * 파일의 모든 레코드 처리가 끝나면 실행될 코드
+         * CSV parser가 파일의 끝에 도달하면 이벤트 발생
+         *
+         * 남은 데이터 처리:
+         * 배열에 남아있는 레코드를 processBatch 호출하여 모두 저장
+         *
+         * 최종 메세지 생성
+         * Promise 완료로 'resolve()'를 통해 최종 메세지를 반환
+         */
         .on('end', async () => {
           if (recordsToInsert.length > 0) {
             await this.processBatch(recordsToInsert, failedRecords);
@@ -376,6 +433,10 @@ export default class CarService {
 
           resolve({ message });
         })
+        /**
+         * 파싱 오류 처리
+         * 'reject()'를 호출하여 Promise를 실패 상태로 전환
+         */
         .on('error', (err) => {
           console.error('CSV Parsing Error:', err);
           reject(new AppError(`CSV 파싱 중 오류 발생: ${err.message}`, 500));
@@ -383,6 +444,17 @@ export default class CarService {
     });
   }
 
+  /**
+   * `batch`에 담긴 레코드들을 데이터베이스에 한 번에 저장
+   *
+   * 이 함수는 `uploadCars` 메서드에서
+   * 1) 데이터가 `BATCH_SIZE`만큼 쌓였을 때
+   * 2) CSV 파일의 끝에 도달했을 때
+   * 호출됨
+   *
+   * @param batch - 데이터베이스에 삽입할 레코드들의 배열
+   * @param failedRecords - 삽입 실패 시 오류를 기록할 배열
+   */
   private async processBatch(
     batch: Prisma.CarCreateManyInput[],
     failedRecords: any[],
@@ -390,7 +462,6 @@ export default class CarService {
     if (batch.length === 0) {
       return;
     }
-
     try {
       const result = await this.carRepository.createMany(batch);
       console.log(`Batch inserted: ${result.count} records.`);
