@@ -6,6 +6,7 @@ import { authenticateJWT } from '../middlewares/auth.middleware';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { isAuthenticated } from '../auth/auth';
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -20,8 +21,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
   const customerController = new CustomerController(prisma);
 
   // 모든 라우트에 인증 미들웨어 적용
-  router.use(authenticateJWT);
-
+  router.use(isAuthenticated);
   // 고객 등록
   router.post('/', validateDto(CreateCustomerDto), customerController.createCustomer);
 
