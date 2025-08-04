@@ -7,13 +7,17 @@ const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.hwp'];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const contractId = req.params.contractId;
-    const uploadPath = path.join(__dirname, '../../uploads/contracts', contractId);
+    const { contractId } = req.params;
 
-    // 디렉토리 없으면 생성
+    if (!contractId) {
+      return cb(new Error('contractId가 없습니다.'), '');
+    }
+
+    const uploadPath = path.join(__dirname, '../../uploads/contracts', contractId);
     fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
+    return cb(null, uploadPath);
   },
+
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     const base = path.basename(file.originalname, ext);
@@ -29,7 +33,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     return cb(new Error(`허용되지 않는 파일 형식입니다: ${ext}`));
   }
 
-  cb(null, true);
+  return cb(null, true);
 };
 
 export const uploadMiddleware = multer({
