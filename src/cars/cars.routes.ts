@@ -19,11 +19,11 @@ const CarsRouter = (prisma: PrismaClient): Router => {
   router.use(isAuthenticated);
   router.post('/', validateDto(CreateCarDTO), carController.createCar);
   router.get('/', validateDto(CarListQueryDto), carController.getCarList);
+  router.get('/models', carController.getCarModelList);
   router.patch('/:carId', validateDto(UpdateCarDto), carController.updateCar);
   router.delete('/:carId', carController.deleteCar);
   router.get('/:carId', carController.getCarDetails);
   router.post('/upload', upload.single('file'), carController.uploadCars);
-  router.get('/models', carController.getCarModelList);
 
   return router;
 };

@@ -89,7 +89,10 @@ export default class CarService {
   }
 
   async getCarList(query: CarListQueryDto): Promise<CarListResponseDto> {
-    const { page, pageSize, status, searchBy, keyword } = query;
+    const page = Number(query.page) ?? 1;
+    const pageSize = Number(query.pageSize) ?? 8;
+    const { status, searchBy, keyword } = query;
+
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
