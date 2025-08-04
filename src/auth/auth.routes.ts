@@ -5,6 +5,7 @@ import validateDto from '../common/utils/validate.dto';
 import { LoginDto } from './dto/login.dto';
 import AuthService from './service';
 import AuthRepository from './repository';
+import isAuthenticated from './auth';
 
 const authRouter = (prisma: PrismaClient): Router => {
   const router = Router();
@@ -15,6 +16,7 @@ const authRouter = (prisma: PrismaClient): Router => {
 
   router.post('/login', validateDto(LoginDto), authController.login);
   router.post('/refresh', authController.refresh);
+  router.post('/logout', isAuthenticated, authController.logout);
 
   return router;
 };
