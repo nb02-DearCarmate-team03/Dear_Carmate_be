@@ -88,7 +88,7 @@ class AuthController {
         secure: process.env.NODE_ENV === 'production',
       });
       return res.status(200).json({ message: '로그아웃 되었습니다.' });
-    } catch (error) {
+    } catch (error: unknown) {
       return next(error);
     }
   };
