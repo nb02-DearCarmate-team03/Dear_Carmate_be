@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { AuthUserPayload } from './dto/login.dto';
 import AuthRepository from './repository';
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from './jwt';
+import { signAccessToken, signRefreshToken, verifyRefreshToken, RefreshTokenPayload } from './jwt';
 import { NotFoundError, UnauthorizedError } from '../middlewares/error.middleware';
 
 export interface LoginResponse {
@@ -76,7 +76,12 @@ class AuthService {
    * refreshTokens 재발급
    */
   async refreshTokens(refreshToken: string): Promise<LoginResponse> {
-    const payload = verifyRefreshToken(refreshToken);
+    let payload: RefreshTokenPayload;
+    try {
+      payload = verifyRefreshToken(refreshToken);
+    } catch (error: unknown) {
+      throw new UnauthorizedError('유효하지 않은 Refresh Token입니다.');
+    }
     const userId = Number(payload.sub);
 
     if (!userId) {
