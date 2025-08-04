@@ -69,29 +69,6 @@ class AuthController {
       return next(error);
     }
   };
-
-  // eslint-disable-next-line class-methods-use-this
-  logout = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
-    if (!req.user) {
-      return res.status(401).json({ message: '인증되지 않은 사용자입니다.' });
-    }
-    /**
-     * 로그아웃시 쿠키 제거
-     */
-    try {
-      res.clearCookie('accessToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-      });
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-      });
-      return res.status(200).json({ message: '로그아웃 되었습니다.' });
-    } catch (error: unknown) {
-      return next(error);
-    }
-  };
 }
 
 export default AuthController;
