@@ -3,6 +3,7 @@ import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
+import stripBomStream from 'strip-bom-stream';
 import {
   AppError,
   BadRequestError,
@@ -288,7 +289,7 @@ export default class CarService {
     });
 
     // 데이터(fileBuffer)를 한 줄 씩 읽는 기능
-    const readableStream = Readable.from(fileBuffer);
+    const readableStream = Readable.from(fileBuffer).pipe(stripBomStream());
 
     return new Promise((resolve, reject) => {
       /**
@@ -310,7 +311,9 @@ export default class CarService {
            * 유효성 검사 실패 시 'failedRecords'에 추가
            */
           try {
-            const carRecordDto = plainToInstance(UploadCarDto, record);
+            const carRecordDto = plainToInstance(UploadCarDto, record, {
+              excludeExtraneousValues: true,
+            });
             const errors = await validate(carRecordDto);
 
             if (errors.length > 0) {
@@ -398,7 +401,6 @@ export default class CarService {
               recordsToInsert.length = 0;
             }
           } catch (error: any) {
-            console.error(`Error processing record on line ${totalRecords}:`, error);
             failedRecords.push({
               lineNumber: totalRecords,
               record,
