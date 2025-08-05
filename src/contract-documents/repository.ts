@@ -39,7 +39,7 @@ export default class ContractDocumentsRepository {
         where.documentName = {
           contains: trimmedKeyword,
         };
-      } else if (searchBy === 'manager') {
+      } else if (searchBy === 'userName') {
         where.contract = {
           user: {
             name: {

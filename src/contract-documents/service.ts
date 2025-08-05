@@ -30,7 +30,7 @@ interface ContractDocumentListItem {
   contractName: string;
   resolutionDate: string;
   documentCount: number;
-  manager: string;
+  userName: string;
   carNumber: string;
 }
 
@@ -242,7 +242,7 @@ export default class ContractDocumentsService {
         contractName,
         resolutionDate: firstDoc.contract.contractDate?.toISOString().split('T')[0] ?? '', //  null 또는 undefined일 경우 '' 반환
         documentCount: docs.length,
-        manager: firstDoc.contract.user.name,
+        userName: firstDoc.contract.user.name,
         carNumber: firstDoc.contract.car.carNumber,
       });
     }
