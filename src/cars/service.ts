@@ -6,7 +6,6 @@ import { plainToInstance } from 'class-transformer';
 import stripBomStream from 'strip-bom-stream';
 import {
   AppError,
-  BadRequestError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -19,6 +18,12 @@ import { UpdateCarDto } from './dto/update-car.dto';
 import { UploadCarDto } from './dto/upload-car.dto';
 
 const BATCH_SIZE = 1000;
+
+const statusMapping = {
+  [CarStatus.POSSESSION]: 'possession',
+  [CarStatus.CONTRACT_PROCEEDING]: 'contractProceeding',
+  [CarStatus.CONTRACT_COMPLETED]: 'contractCompleted',
+};
 
 export interface CarModelOfManufacturer {
   manufacturer: string;
@@ -62,7 +67,7 @@ export default class CarService {
       accidentCount: newCar.accidentCount,
       explanation: newCar.explanation,
       accidentDetails: newCar.accidentDetails,
-      status: (newCar.status as string).toLowerCase() as CarStatus,
+      status: statusMapping[newCar.status] as CarStatus,
     };
   }
 
@@ -76,9 +81,14 @@ export default class CarService {
 
     const whereClause: Prisma.CarWhereInput = {};
 
-    // 차량 상태 필터링
-    if (status) {
-      whereClause.status = status as CarStatus;
+    const statusMap: Record<string, CarStatus> = {
+      possession: CarStatus.POSSESSION,
+      contractProceeding: CarStatus.CONTRACT_PROCEEDING,
+      contractCompleted: CarStatus.CONTRACT_COMPLETED,
+    };
+
+    if (status && statusMap[status]) {
+      whereClause.status = statusMap[status];
     }
 
     // 검색 기준, 검색어 필터링
@@ -105,8 +115,6 @@ export default class CarService {
     const totalItemCount = await this.carRepository.countCars(whereClause);
     const cars = await this.carRepository.findManyCar(findOptions);
 
-    console.log(cars);
-
     const carOutputData: CarResponseDto[] = cars.map((car) => ({
       id: car.id,
       carNumber: car.carNumber,
@@ -119,7 +127,7 @@ export default class CarService {
       accidentCount: car.accidentCount,
       explanation: car.explanation,
       accidentDetails: car.accidentDetails,
-      status: (car.status as string).toLowerCase() as CarStatus,
+      status: statusMapping[car.status] as CarStatus,
     }));
     const totalPages = Math.ceil(totalItemCount / pageSize);
     return {
@@ -155,31 +163,6 @@ export default class CarService {
         throw new ConflictError('이미 존재하는 차량 번호입니다.');
       }
       updateData.carNumber = data.carNumber;
-    }
-
-    // 차량 유형 매핑
-    if (data.type !== undefined) {
-      let prismaCarType: CarType;
-      switch (data.type) {
-        case '경·소형':
-          prismaCarType = CarType.COMPACT;
-          break;
-        case '준중·중형':
-          prismaCarType = CarType.MIDSIZE;
-          break;
-        case '대형':
-          prismaCarType = CarType.FULLSIZE;
-          break;
-        case '스포츠카':
-          prismaCarType = CarType.SPORTS;
-          break;
-        case 'SUV':
-          prismaCarType = CarType.SUV;
-          break;
-        default:
-          throw new BadRequestError(`유효하지 않은 차량 유형: ${data.type}`);
-      }
-      updateData.type = prismaCarType;
     }
 
     // 업데이트할 필드가 정의되어 있는 경우에만 추가
