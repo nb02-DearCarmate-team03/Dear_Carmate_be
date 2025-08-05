@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import UploadRepository from './repository';
-import UploadService from './service';
 import UploadController from './controller';
+import UploadService from './service';
+import UploadRepository from './repository';
+import { CsvUploadCreateDto } from './dto/csv-upload-create.dto';
+import validateDto from '../common/utils/validate.dto';
 import { authenticateJWT } from '../middlewares/auth.middleware';
-import { csvUploadMiddleware } from '../middlewares/csv-upload.middleware';
 
-const createCsvUploadRouter = (prisma: PrismaClient): Router => {
+const uploadRouter = (prisma: PrismaClient): Router => {
   const router = Router();
 
   const uploadRepository = new UploadRepository(prisma);
@@ -15,16 +16,31 @@ const createCsvUploadRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @route POST /uploads
-   * @desc CSV 업로드 등록
+   * @desc  CSV 파일 업로드 및 데이터 처리 (고객 or 차량)
+   * @access Private
    */
   router.post(
     '/',
     authenticateJWT,
-    csvUploadMiddleware.single('file'), // multipart/form-data의 key는 "file"
-    uploadController.createUpload,
+    validateDto(CsvUploadCreateDto),
+    uploadController.createAndProcessUpload,
   );
+
+  /**
+   * @route GET /uploads/:id
+   * @desc  업로드 단건 조회
+   * @access Private
+   */
+  router.get('/:id', authenticateJWT, uploadController.getUploadById);
+
+  /**
+   * @route GET /uploads
+   * @desc  업로드 목록 조회 (type, page, limit 쿼리 지원)
+   * @access Private
+   */
+  router.get('/', authenticateJWT, uploadController.getUploads);
 
   return router;
 };
 
-export default createCsvUploadRouter;
+export default uploadRouter;

@@ -2,8 +2,8 @@ import { PrismaClient, UploadType } from '@prisma/client';
 import { CsvUploadCreateDto } from './dto/csv-upload-create.dto';
 
 export default class UploadRepository {
-  constructor(private readonly prisma: PrismaClient) {
-    // PrismaClient는 생성자 주입을 통해 전달받습니다.
+  constructor(public readonly prisma: PrismaClient) {
+    // 트랜잭션 사용을 위해 public 접근 허용
   }
 
   /**

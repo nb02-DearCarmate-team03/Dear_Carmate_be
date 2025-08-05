@@ -1,55 +1,42 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import UploadService from './service';
+import { CsvUploadCreateDto } from './dto/csv-upload-create.dto';
 
 export default class UploadController {
   constructor(private readonly uploadService: UploadService) {
-    // UploadService는 생성자 주입을 통해 전달받습니다.
+    // UploadService 인스턴스를 생성합니다.
   }
 
-  /**
-   * CSV 대용량 업로드 등록
-   * @route POST /uploads
-   */
-  async createUpload(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const {
-        file,
-        body: { uploadType },
-        user,
-      } = req;
+  // 업로드 + 처리까지 한 번에
+  createAndProcessUpload = async (req: Request, res: Response) => {
+    const dto: CsvUploadCreateDto = {
+      ...req.body,
+      companyId: req.user?.companyId as number, // JWT 인증 유저
+    };
 
-      const { id: userId, companyId } = user ?? {};
+    const uploadId = await this.uploadService.createUpload(dto);
+    await this.uploadService.processUpload(uploadId);
 
-      if (!userId || !companyId) {
-        res.status(401).json({ message: '인증된 사용자만 업로드할 수 있습니다.' });
-        return;
-      }
+    res.status(201).json({ uploadId, message: '업로드 및 처리 완료' });
+  };
 
-      if (!file) {
-        res.status(400).json({ message: 'CSV 파일이 누락되었습니다.' });
-        return;
-      }
+  getUploadById = async (req: Request, res: Response) => {
+    const uploadId = Number(req.params.id);
+    const upload = await this.uploadService.getUploadById(uploadId);
+    res.json(upload);
+  };
 
-      if (!uploadType || !['CAR', 'CUSTOMER'].includes(uploadType)) {
-        res.status(400).json({ message: 'uploadType은 CAR 또는 CUSTOMER여야 합니다.' });
-        return;
-      }
+  getUploads = async (req: Request, res: Response) => {
+    const companyId = req.user?.companyId as number;
+    const { type, page, limit } = req.query;
 
-      const uploadId = await this.uploadService.createUpload({
-        companyId,
-        userId,
-        fileName: file.originalname,
-        fileType: uploadType,
-        status: 'PENDING',
-        totalRecords: 0,
-        processedRecords: 0,
-        successRecords: 0,
-        failedRecords: 0,
-      });
+    const result = await this.uploadService.getUploads({
+      companyId,
+      type: type as string,
+      page: Number(page),
+      limit: Number(limit),
+    });
 
-      res.status(201).json({ message: '업로드가 등록되었습니다.', uploadId });
-    } catch (error) {
-      next(error);
-    }
-  }
+    res.json(result);
+  };
 }
