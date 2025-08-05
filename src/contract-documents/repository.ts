@@ -23,7 +23,7 @@ export default class ContractDocumentsRepository {
     keyword?: string,
     searchBy?: string,
   ): Promise<{ documents: any[]; total: number }> {
-    const where: Prisma.ContractDocumentWhereInput = {
+    let where: Prisma.ContractDocumentWhereInput = {
       deletedAt: null,
       contract: {
         companyId,
@@ -31,19 +31,44 @@ export default class ContractDocumentsRepository {
       },
     };
 
-    // 검색 조건 추가 (직접 할당 방식)
+    // 검색 조건 추가
     if (keyword && typeof keyword === 'string' && keyword.trim() && searchBy) {
       const trimmedKeyword = keyword.trim();
 
       if (searchBy === 'contractName') {
-        where.documentName = {
-          contains: trimmedKeyword,
+        where = {
+          deletedAt: null,
+          documentName: {
+            contains: trimmedKeyword,
+          },
+          contract: {
+            companyId,
+            deletedAt: null,
+          },
         };
       } else if (searchBy === 'userName') {
-        where.contract = {
-          user: {
-            name: {
-              contains: trimmedKeyword,
+        where = {
+          deletedAt: null,
+          contract: {
+            companyId,
+            deletedAt: null,
+            user: {
+              name: {
+                contains: trimmedKeyword,
+              },
+            },
+          },
+        };
+      } else if (searchBy === 'carNumber') {
+        where = {
+          deletedAt: null,
+          contract: {
+            companyId,
+            deletedAt: null,
+            car: {
+              carNumber: {
+                contains: trimmedKeyword,
+              },
             },
           },
         };
