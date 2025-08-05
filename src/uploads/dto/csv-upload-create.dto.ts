@@ -11,6 +11,9 @@ export class CsvUploadCreateDto {
   @IsString()
   fileName: string;
 
+  @IsString()
+  fileUrl: string; // ✅ 필수 추가
+
   @IsEnum(UploadType)
   fileType: UploadType;
 

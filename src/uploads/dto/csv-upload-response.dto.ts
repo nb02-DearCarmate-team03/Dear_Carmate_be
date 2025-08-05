@@ -15,6 +15,9 @@ export class CsvUploadResponseDto {
   @IsString()
   fileName: string;
 
+  @IsString()
+  fileUrl: string;
+
   @IsEnum(UploadType)
   fileType: UploadType;
 

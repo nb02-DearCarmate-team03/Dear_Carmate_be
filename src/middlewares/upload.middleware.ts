@@ -1,46 +1,51 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { BadRequestError } from '../common/utils/custom-errors';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.hwp'];
+// 업로드 디렉토리 생성
+const uploadDir = path.join(process.cwd(), 'uploads', 'contracts');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
+// 파일 저장 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const { contractId } = req.params;
-
-    if (!contractId) {
-      return cb(new Error('contractId가 없습니다.'), '');
-    }
-
-    const uploadPath = path.join(__dirname, '../../uploads/contracts', contractId);
-    fs.mkdirSync(uploadPath, { recursive: true });
-    return cb(null, uploadPath);
+    cb(null, uploadDir);
   },
-
   filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const ext = path.extname(file.originalname);
-    const base = path.basename(file.originalname, ext);
-    const timestamp = Date.now();
-    cb(null, `${base}-${timestamp}${ext}`);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
   },
 });
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+// 파일 필터
+const fileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
   const ext = path.extname(file.originalname).toLowerCase();
 
-  if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return cb(new Error(`허용되지 않는 파일 형식입니다: ${ext}`));
+  if (allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new BadRequestError(`허용되지 않은 파일 형식입니다: ${ext}`));
   }
-
-  return cb(null, true);
 };
 
-export const uploadMiddleware = multer({
+// Multer 설정
+const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: MAX_FILE_SIZE,
-    files: 5,
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 10, // 최대 10개 파일
   },
 });
+
+export default upload;

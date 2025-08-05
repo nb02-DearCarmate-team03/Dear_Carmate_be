@@ -8,6 +8,8 @@ import { dashboardRouter } from './dashboard/dashboard.routes';
 import carsRouter from './cars/cars.routes';
 import createCsvUploadRouter from './uploads/router';
 import prisma from './common/prisma/client';
+import carsRouter from './cars/cars.routes';
+import createContractDocumentsRouter from './contract-documents/contract-documents.routes';
 
 const router = express.Router();
 
@@ -17,6 +19,6 @@ router.use('/companies', companiesRouter(prisma));
 router.use('/customers', createCustomerRoutes(prisma));
 router.use('/cars', carsRouter(prisma));
 router.use('/dashboard', dashboardRouter(prisma));
-router.use('/uploads', createCsvUploadRouter(prisma));
+router.use('/contractDocuments', createContractDocumentsRouter(prisma));
 
 export default router;

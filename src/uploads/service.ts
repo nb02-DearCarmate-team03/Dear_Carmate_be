@@ -39,7 +39,7 @@ export default class UploadService {
       skip_empty_lines: true,
       trim: true,
     });
-
+    // CSV 파일의 각 행을 객체로 변환합니다.
     await this.uploadRepository.prisma.$transaction(async (tx) => {
       if (fileType === UploadType.CUSTOMER) {
         const customerData = records.map((row: any) => ({
@@ -52,6 +52,7 @@ export default class UploadService {
           memo: row.memo,
           companyId,
         }));
+        // 고객 데이터 저장
         await tx.customer.createMany({ data: customerData });
       } else if (fileType === UploadType.CAR) {
         const carData = records.map((row: any) => ({
