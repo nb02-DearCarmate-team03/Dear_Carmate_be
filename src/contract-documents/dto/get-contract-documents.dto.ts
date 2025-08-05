@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export default class GetContractDocumentsDto {
@@ -12,6 +12,7 @@ export default class GetContractDocumentsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(100)
   pageSize?: number;
 
   @IsOptional()
@@ -19,6 +20,6 @@ export default class GetContractDocumentsDto {
   keyword?: string;
 
   @IsOptional()
-  @IsIn(['contractName', 'manager'])
+  @IsIn(['contractName', 'userName', 'carNumber'])
   searchBy?: string;
 }
