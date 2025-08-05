@@ -29,6 +29,10 @@ passport.use(
         const user = await authRepository.findByEmail(email);
         if (!user) return done(null, false, { message: '존재하지 않는 이메일입니다.' });
 
+        if (!user.isActive) {
+          return done(null, false, { message: '비활성화된 계정입니다.' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return done(null, false, { message: '비밀번호가 일치하지 않습니다.' });
 
