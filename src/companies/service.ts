@@ -54,11 +54,18 @@ export default class CompanyService {
     const take = pageSize;
 
     const whereClause: Prisma.CompanyWhereInput = {};
-    if (query.searchBy === 'companyName' && query.keyword) {
-      whereClause.companyName = {
-        contains: query.keyword,
-        mode: 'insensitive',
-      };
+    if (query.searchBy && query.keyword) {
+      if (query.searchBy === 'companyName') {
+        whereClause.companyName = {
+          contains: query.keyword,
+          mode: 'insensitive',
+        };
+      } else if (query.searchBy === 'companyCode') {
+        whereClause.companyCode = {
+          contains: query.keyword,
+          mode: 'insensitive',
+        };
+      }
     }
 
     const findOptions: FindManyCompanyOptions = {
