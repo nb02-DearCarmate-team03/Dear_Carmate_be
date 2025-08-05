@@ -62,7 +62,7 @@ export default class ContractDocumentsService {
     companyId: number,
     dto: GetContractDocumentsDto,
   ): Promise<PaginatedResult> {
-    const { page = 1, pageSize = 10, keyword, searchBy } = dto;
+    const { page = 1, pageSize = 8, keyword, searchBy } = dto;
     const offset = (page - 1) * pageSize;
 
     const { documents, total } = await this.contractDocumentsRepository.findContractDocuments(
