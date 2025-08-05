@@ -1,11 +1,12 @@
 import { parse } from 'csv-parse/sync';
-import axios from 'axios';
+import { UploadType } from '@prisma/client';
 import UploadRepository from './repository';
 import { CsvUploadCreateDto } from './dto/csv-upload-create.dto';
+import { downloadCsvFile } from '../common/utils/csv-downloader';
 
 export default class UploadService {
   constructor(private readonly uploadRepository: UploadRepository) {
-    // Prisma 클라이언트 인스턴스를 생성합니다.
+    // 생성자에서 UploadRepository 인스턴스를 주입받습니다.
   }
 
   async createUpload(dto: CsvUploadCreateDto): Promise<number> {
@@ -29,21 +30,18 @@ export default class UploadService {
     const upload = await this.uploadRepository.findById(uploadId);
     if (!upload) throw new Error('해당 업로드 정보를 찾을 수 없습니다');
 
-    const { fileUrl, type, companyId } = upload;
+    const { fileUrl, fileType, companyId } = upload;
 
-    // S3에서 파일 다운로드
-    const fileBuffer = await this.downloadCsvFile(fileUrl);
+    const fileBuffer = await downloadCsvFile(fileUrl);
 
-    // CSV 파싱
     const records = parse(fileBuffer.toString(), {
       columns: true,
       skip_empty_lines: true,
       trim: true,
     });
 
-    // 트랜잭션으로 삽입
     await this.uploadRepository.prisma.$transaction(async (tx) => {
-      if (type === 'customer') {
+      if (fileType === UploadType.CUSTOMER) {
         const customerData = records.map((row: any) => ({
           name: row.name,
           gender: row.gender,
@@ -55,31 +53,24 @@ export default class UploadService {
           companyId,
         }));
         await tx.customer.createMany({ data: customerData });
-      } else if (type === 'car') {
+      } else if (fileType === UploadType.CAR) {
         const carData = records.map((row: any) => ({
           carNumber: row.carNumber,
           manufacturer: row.manufacturer,
           model: row.model,
-          year: Number(row.year),
+          type: row.type,
+          manufacturingYear: Number(row.manufacturingYear),
           mileage: Number(row.mileage),
           price: Number(row.price),
           accidentCount: Number(row.accidentCount),
-          description: row.description,
+          explanation: row.explanation,
           accidentDetails: row.accidentDetails,
           companyId,
         }));
         await tx.car.createMany({ data: carData });
       } else {
-        throw new Error(`지원하지 않는 업로드 타입: ${type}`);
+        throw new Error(`지원하지 않는 업로드 타입: ${fileType}`);
       }
     });
-  }
-
-  /**
-   * CSV 파일 다운로드 (S3에서)
-   */
-  private async downloadCsvFile(fileUrl: string): Promise<Buffer> {
-    const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
-    return Buffer.from(response.data);
   }
 }
