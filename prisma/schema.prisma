@@ -177,6 +177,7 @@ model Upload {
   companyId        Int          @map("company_id")
   userId           Int          @map("user_id")
   fileName         String       @map("file_name") @db.VarChar(255)
+  fileUrl          String       @map("file_url") @db.VarChar(500) 
   fileType         UploadType   @map("upload_type")
   status           UploadStatus @default(PENDING)
   totalRecords     Int          @default(0) @map("total_records")
@@ -194,6 +195,7 @@ model Upload {
   @@index([createdAt])
   @@map("uploads")
 }
+
 
 model Meeting {
   id         Int      @id @default(autoincrement())
