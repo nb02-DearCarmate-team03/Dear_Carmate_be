@@ -18,7 +18,7 @@ export default class UploadService {
     return this.uploadRepository.findById(uploadId);
   }
 
-  async getUploads(params: { companyId: number; type?: string; page?: number; limit?: number }) {
+  async getUploads(params: { companyId: number; type?: string; page?: number; pageSize?: number }) {
     return this.uploadRepository.findAll(params);
   }
 

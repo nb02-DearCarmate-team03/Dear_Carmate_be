@@ -12,13 +12,23 @@ if (!fs.existsSync(uploadDir)) {
 // 파일 저장 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    try {
+      cb(null, uploadDir);
+    } catch (err) {
+      // 타입 오류 방지를 위해 두 번째 인자(dummy path)도 전달
+      cb(err as Error, uploadDir);
+    }
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, `${name}-${uniqueSuffix}${ext}`);
+    try {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const ext = path.extname(file.originalname);
+      const name = path.basename(file.originalname, ext);
+      cb(null, `${name}-${uniqueSuffix}${ext}`);
+    } catch (err) {
+      // 오류 발생 시에도 두 번째 인자를 전달
+      cb(err as Error, file.originalname);
+    }
   },
 });
 

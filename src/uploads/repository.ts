@@ -31,12 +31,12 @@ export default class UploadRepository {
     companyId,
     type,
     page = 1,
-    limit = 10,
+    pageSize = 8,
   }: {
     companyId: number;
     type?: string;
     page?: number;
-    limit?: number;
+    pageSize?: number;
   }) {
     const where = {
       companyId,
@@ -47,8 +47,8 @@ export default class UploadRepository {
       this.prisma.upload.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
       }),
       this.prisma.upload.count({ where }),
     ]);
@@ -57,7 +57,7 @@ export default class UploadRepository {
       items,
       total,
       page,
-      limit,
+      pageSize,
     };
   }
 }
