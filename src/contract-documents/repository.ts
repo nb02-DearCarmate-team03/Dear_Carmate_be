@@ -18,8 +18,8 @@ export default class ContractDocumentsRepository {
 
   async findContractDocuments(
     companyId: number,
-    offset: number,
-    limit: number,
+    page: number,
+    pageSize: number,
     keyword?: string,
     searchBy?: string,
   ): Promise<{ documents: any[]; total: number }> {
@@ -75,8 +75,8 @@ export default class ContractDocumentsRepository {
             },
           },
         },
-        skip: offset,
-        take: limit,
+        skip: page,
+        take: pageSize,
         orderBy: {
           createdAt: 'desc',
         },

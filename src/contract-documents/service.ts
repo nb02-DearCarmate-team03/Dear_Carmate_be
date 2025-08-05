@@ -60,7 +60,7 @@ export default class ContractDocumentsService {
 
     const { documents, total } = await this.contractDocumentsRepository.findContractDocuments(
       companyId,
-      offset,
+      page,
       pageSize,
       keyword,
       searchBy,
