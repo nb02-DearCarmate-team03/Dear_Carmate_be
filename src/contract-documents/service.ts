@@ -1,4 +1,5 @@
-/* eslint-disable */ import { ContractDocument } from '@prisma/client';
+/* eslint-disable */
+import { ContractDocument } from '@prisma/client';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import archiver from 'archiver';
@@ -25,13 +26,19 @@ interface ContractDocumentWithRelations extends ContractDocument {
   };
 }
 
+interface Document {
+  id: number;
+  fileName: string;
+}
+
 interface ContractDocumentListItem {
   id: number;
   contractName: string;
   resolutionDate: string;
-  documentCount: number;
-  userName: string;
+  documentsCount: number;
+  manager: string;
   carNumber: string;
+  documents: Document[];
 }
 
 interface PaginatedResult {
@@ -236,14 +243,19 @@ export default class ContractDocumentsService {
         continue; // 또는 throw new Error('문서 없음');
       }
       const contractName = firstDoc.documentName || `계약서_${contractId}`;
+      const documents = docs.map((doc) => ({
+        id: doc.id,
+        fileName: doc.fileName,
+      }));
 
       result.push({
         id: contractId,
         contractName,
         resolutionDate: firstDoc.contract.contractDate?.toISOString().split('T')[0] ?? '', //  null 또는 undefined일 경우 '' 반환
-        documentCount: docs.length,
-        userName: firstDoc.contract.user.name,
+        documentsCount: docs.length,
+        manager: firstDoc.contract.user.name,
         carNumber: firstDoc.contract.car.carNumber,
+        documents: documents,
       });
     }
 
