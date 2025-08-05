@@ -43,31 +43,8 @@ export default class CarService {
       throw new ConflictError('이미 존재하는 차량 번호입니다.');
     }
 
-    // 차량 유형 매핑
-    let prismaCarType: CarType;
-    switch (data.type) {
-      case '경·소형':
-        prismaCarType = CarType.COMPACT;
-        break;
-      case '준중·중형':
-        prismaCarType = CarType.MIDSIZE;
-        break;
-      case '대형':
-        prismaCarType = CarType.FULLSIZE;
-        break;
-      case '스포츠카':
-        prismaCarType = CarType.SPORTS;
-        break;
-      case 'SUV':
-        prismaCarType = CarType.SUV;
-        break;
-      default:
-        throw new BadRequestError(`유효하지 않은 차량 유형: ${data.type}`);
-    }
-
     const newCar = await this.carRepository.create({
       ...data,
-      type: prismaCarType,
       company: {
         connect: { id: companyId },
       },
@@ -78,14 +55,14 @@ export default class CarService {
       carNumber: newCar.carNumber,
       manufacturer: newCar.manufacturer,
       model: newCar.model,
-      type: newCar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: newCar.type as CarType,
       manufacturingYear: newCar.manufacturingYear,
       mileage: newCar.mileage,
       price: newCar.price.toNumber(),
       accidentCount: newCar.accidentCount,
       explanation: newCar.explanation,
       accidentDetails: newCar.accidentDetails,
-      status: newCar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: (newCar.status as string).toLowerCase() as CarStatus,
     };
   }
 
@@ -128,19 +105,21 @@ export default class CarService {
     const totalItemCount = await this.carRepository.countCars(whereClause);
     const cars = await this.carRepository.findManyCar(findOptions);
 
+    console.log(cars);
+
     const carOutputData: CarResponseDto[] = cars.map((car) => ({
       id: car.id,
       carNumber: car.carNumber,
       manufacturer: car.manufacturer,
       model: car.model,
-      type: car.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: car.type as CarType,
       manufacturingYear: car.manufacturingYear,
       mileage: car.mileage,
       price: car.price.toNumber(),
       accidentCount: car.accidentCount,
       explanation: car.explanation,
       accidentDetails: car.accidentDetails,
-      status: car.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: (car.status as string).toLowerCase() as CarStatus,
     }));
     const totalPages = Math.ceil(totalItemCount / pageSize);
     return {
@@ -220,14 +199,14 @@ export default class CarService {
       carNumber: updatedCar.carNumber,
       manufacturer: updatedCar.manufacturer,
       model: updatedCar.model,
-      type: updatedCar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: updatedCar.type as CarType,
       manufacturingYear: updatedCar.manufacturingYear,
       mileage: updatedCar.mileage,
       price: updatedCar.price.toNumber(),
       accidentCount: updatedCar.accidentCount,
       explanation: updatedCar.explanation,
       accidentDetails: updatedCar.accidentDetails,
-      status: updatedCar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: updatedCar.status as CarStatus,
     };
   }
 
@@ -262,14 +241,14 @@ export default class CarService {
       carNumber: detailcar.carNumber,
       manufacturer: detailcar.manufacturer,
       model: detailcar.model,
-      type: detailcar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: detailcar.type as CarType,
       manufacturingYear: detailcar.manufacturingYear,
       mileage: detailcar.mileage,
       price: detailcar.price.toNumber(),
       accidentCount: detailcar.accidentCount,
       explanation: detailcar.explanation,
       accidentDetails: detailcar.accidentDetails,
-      status: detailcar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: detailcar.status as CarStatus,
     };
   }
 
