@@ -1,4 +1,12 @@
-import { IsString, IsEmail, MinLength, MaxLength, IsNotEmpty, Length } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  IsNotEmpty,
+  Length,
+} from 'class-validator';
 
 class RegisterDto {
   @IsNotEmpty({ message: '이름은 필수 입력 항목입니다.' })
@@ -27,11 +35,12 @@ class RegisterDto {
   @MaxLength(255, { message: '비밀번호 확인은 최대 255자 이하여야 합니다.' })
   passwordConfirmation: string;
 
+  @IsOptional()
   @IsString()
   imageUrl?: string;
 
   @IsString({ message: '기업명은 문자열이어야 합니다.' })
-  company: string;
+  companyName: string;
 
   @IsString({ message: '기업코드는 문자열이어야 합니다.' })
   companyCode: string;
