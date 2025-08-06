@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateJWT } from '../middlewares/auth.middleware';
+import { isAuthenticated } from '../auth/auth';
 import validateDto from '../common/utils/validate.dto';
 import upload from '../middlewares/upload.middleware';
 import ContractDocumentsController from './controller';
@@ -22,7 +22,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
   // 계약서 목록 조회
   router.get(
     '/',
-    authenticateJWT,
+    isAuthenticated,
     validateDto(GetContractDocumentsDto),
     contractDocumentsController.getContractDocuments,
   );
@@ -30,7 +30,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
   // 계약서 업로드
   router.post(
     '/upload',
-    authenticateJWT,
+    isAuthenticated,
     upload.array('files', 10), // 최대 10개 파일
     validateDto(UploadContractDocumentDto),
     contractDocumentsController.uploadContractDocuments,
@@ -39,14 +39,14 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
   // 계약서 다운로드
   router.get(
     '/:contractDocumentId/download',
-    authenticateJWT,
+    isAuthenticated,
     contractDocumentsController.downloadSingleDocument,
   );
 
   // 여러 계약서 다운로드
   router.post(
     '/download',
-    authenticateJWT,
+    isAuthenticated,
     validateDto(DownloadContractDocumentsDto),
     contractDocumentsController.downloadMultipleDocuments,
   );
@@ -54,7 +54,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
   // 계약서 수정 (추가/삭제)
   router.patch(
     '/:contractId',
-    authenticateJWT,
+    isAuthenticated,
     upload.array('files', 10),
     validateDto(EditContractDocumentsDto),
     contractDocumentsController.editContractDocuments,
