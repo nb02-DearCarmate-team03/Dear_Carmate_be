@@ -4,18 +4,16 @@ import { Readable } from 'stream';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import stripBomStream from 'strip-bom-stream';
-import {
-  AppError,
-  ConflictError,
-  ForbiddenError,
-  NotFoundError,
-  UnauthorizedError,
-} from '../middlewares/error.middleware';
 import { CarResponseDto, CreateCarDTO } from './dto/create-car.dto';
 import CarRepository from './repository';
 import { CarListQueryDto, CarListResponseDto, FindManyCarOptions } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { UploadCarDto } from './dto/upload-car.dto';
+import { ConflictError } from '../common/errors/conflict-error';
+import { NotFoundError } from '../common/errors/not-found-error';
+import { ForbiddenError } from '../common/errors/forbidden-error';
+import { UnauthorizedError } from '../common/errors/unauthorize-error';
+import { AppError } from '../common/errors/app-error';
 
 const BATCH_SIZE = 1000;
 

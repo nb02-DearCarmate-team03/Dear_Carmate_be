@@ -2,12 +2,10 @@ import bcrypt from 'bcrypt';
 import UserRepository from './repository';
 import RegisterDto, { RegisterResponse } from './dto/create-user.dto';
 import UpdateUserDto, { UpdateUserResponse } from './dto/update-user.dto';
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-  UnauthorizedError,
-} from '../middlewares/error.middleware';
+import { ConflictError } from '../common/errors/conflict-error';
+import { BadRequestError } from '../common/errors/bad-request-error';
+import { NotFoundError } from '../common/errors/not-found-error';
+import { UnauthorizedError } from '../common/errors/unauthorize-error';
 
 class UserService {
   /**

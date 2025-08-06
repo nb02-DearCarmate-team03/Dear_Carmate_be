@@ -1,7 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { BadRequestError } from '../common/utils/custom-errors';
+import { BadRequestError } from '../common/errors/bad-request-error';
 
 // 업로드 디렉토리 경로
 const uploadDir = path.join(process.cwd(), 'uploads', 'contracts');
