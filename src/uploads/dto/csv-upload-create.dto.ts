@@ -12,7 +12,7 @@ export class CsvUploadCreateDto {
   fileName: string;
 
   @IsString()
-  fileUrl: string; 
+  fileUrl: string;
 
   @IsEnum(UploadType)
   fileType: UploadType;

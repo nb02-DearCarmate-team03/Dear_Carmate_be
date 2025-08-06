@@ -23,8 +23,8 @@ const uploadRouter = (prisma: PrismaClient): Router => {
   router.post(
     '/',
     authenticateJWT,
-    csvUploadMiddleware.single('file'), 
-    validateDto(CsvUploadCreateDto),    
+    csvUploadMiddleware.single('file'),
+    validateDto(CsvUploadCreateDto),
     uploadController.createAndProcessUpload,
   );
 

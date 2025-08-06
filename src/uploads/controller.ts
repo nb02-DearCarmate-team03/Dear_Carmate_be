@@ -3,7 +3,9 @@ import UploadService from './service';
 import { CsvUploadCreateDto } from './dto/csv-upload-create.dto';
 
 export default class UploadController {
-  constructor(private readonly uploadService: UploadService) {}
+  constructor(private readonly uploadService: UploadService) {
+    // 생성자에서 UploadService 인스턴스를 주입받습니다.
+  }
 
   /**
    * 업로드 + 처리 (CSV 파싱 등)
