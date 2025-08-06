@@ -26,14 +26,17 @@ class UserService {
       password,
       passwordConfirmation,
       imageUrl,
-      company,
+      companyName,
       companyCode,
     } = data;
 
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) throw new ConflictError('이미 존재하는 이메일입니다.');
 
-    const companyEntity = await this.userRepository.findCompanyByNameAndCode(company, companyCode);
+    const companyEntity = await this.userRepository.findCompanyByNameAndCode(
+      companyName,
+      companyCode,
+    );
     if (!companyEntity) throw new BadRequestError('기업 정보가 유효하지 않습니다.');
 
     if (password !== passwordConfirmation) {
