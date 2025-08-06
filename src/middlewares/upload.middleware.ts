@@ -3,21 +3,17 @@ import path from 'path';
 import fs from 'fs';
 import { BadRequestError } from '../common/utils/custom-errors';
 
-// 업로드 디렉토리 생성
+// 업로드 디렉토리 경로
 const uploadDir = path.join(process.cwd(), 'uploads', 'contracts');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 // 파일 저장 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    try {
-      cb(null, uploadDir);
-    } catch (err) {
-      // 타입 오류 방지를 위해 두 번째 인자(dummy path)도 전달
-      cb(err as Error, uploadDir);
-    }
+    // 비동기 mkdir을 then/catch로 처리 (multer는 async 함수를 destination에 허용하지 않음)
+    fs.promises
+      .mkdir(uploadDir, { recursive: true })
+      .then(() => cb(null, uploadDir))
+      .catch((err) => cb(err as Error, uploadDir));
   },
   filename: (req, file, cb) => {
     try {
@@ -26,7 +22,6 @@ const storage = multer.diskStorage({
       const name = path.basename(file.originalname, ext);
       cb(null, `${name}-${uniqueSuffix}${ext}`);
     } catch (err) {
-      // 오류 발생 시에도 두 번째 인자를 전달
       cb(err as Error, file.originalname);
     }
   },
@@ -54,7 +49,7 @@ const upload = multer({
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
-    files: 10, // 최대 10개 파일
+    files: 10, // 최대 10개
   },
 });
 
