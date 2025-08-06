@@ -1,16 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthRequest } from '../middlewares/auth.middleware';
+import { User } from '@prisma/client'; // Passport에서 사용하는 User 타입
 import ContractDocumentsService from './service';
 import GetContractDocumentsDto from './dto/get-contract-documents.dto';
 import UploadContractDocumentDto from './dto/upload-contract-document.dto';
 import DownloadContractDocumentsDto from './dto/download-contract-documents.dto';
 import EditContractDocumentsDto from './dto/edit-contract-documents.dto';
 
+// Passport 인증 후 Request 타입 정의
+interface AuthenticatedRequest extends Request {
+  user?: User;
+}
+
 export default class ContractDocumentsController {
   // eslint-disable-next-line no-empty-function
   constructor(private readonly contractDocumentsService: ContractDocumentsService) {}
 
-  async getContractDocuments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  // 화살표 함수를 사용하여 this 바인딩 문제 해결
+  getContractDocuments = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { companyId } = req.user!;
       const query = req.query as unknown as GetContractDocumentsDto;
@@ -21,13 +31,13 @@ export default class ContractDocumentsController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  async uploadContractDocuments(
-    req: AuthRequest,
+  uploadContractDocuments = async (
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction,
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       const { companyId, id: userId } = req.user!;
       const { contractId } = req.body as UploadContractDocumentDto;
@@ -52,9 +62,13 @@ export default class ContractDocumentsController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  async downloadSingleDocument(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  downloadSingleDocument = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { companyId } = req.user!;
       const { contractDocumentId } = req.params;
@@ -73,13 +87,13 @@ export default class ContractDocumentsController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  async downloadMultipleDocuments(
-    req: AuthRequest,
+  downloadMultipleDocuments = async (
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction,
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       const { companyId } = req.user!;
       const { contractDocumentIds } = req.body as DownloadContractDocumentsDto;
@@ -95,9 +109,13 @@ export default class ContractDocumentsController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  async editContractDocuments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  editContractDocuments = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const { companyId, id: userId } = req.user!;
       const { contractId } = req.params;
@@ -116,5 +134,5 @@ export default class ContractDocumentsController {
     } catch (error) {
       next(error);
     }
-  }
+  };
 }
