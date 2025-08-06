@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../common/errors/app-error';
 
@@ -48,7 +47,8 @@ export default function errorHandler(
 
   // 응답 헤더가 이미 전송되었다면 next로
   if (res.headersSent) {
-    return next(err);
+    next(err);
+    return;
   }
 
   // 최종 응답
