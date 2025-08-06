@@ -48,17 +48,24 @@ export default class CompanyService {
   }
 
   async getCompanyList(query: CompanyListQueryDto): Promise<CompanyListResponseDto> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 8;
+    const page = Number(query.page) ?? 1;
+    const pageSize = Number(query.pageSize) ?? 8;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
     const whereClause: Prisma.CompanyWhereInput = {};
-    if (query.searchBy === 'companyName' && query.keyword) {
-      whereClause.companyName = {
-        contains: query.keyword,
-        mode: 'insensitive',
-      };
+    if (query.searchBy && query.keyword) {
+      if (query.searchBy === 'companyName') {
+        whereClause.companyName = {
+          contains: query.keyword,
+          mode: 'insensitive',
+        };
+      } else if (query.searchBy === 'companyCode') {
+        whereClause.companyCode = {
+          contains: query.keyword,
+          mode: 'insensitive',
+        };
+      }
     }
 
     const findOptions: FindManyCompanyOptions = {
@@ -89,8 +96,8 @@ export default class CompanyService {
   }
 
   async getCompanyUsers(query: UserListQueryDto): Promise<UserListResponseDto> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 8;
+    const page = Number(query.page) ?? 1;
+    const pageSize = Number(query.pageSize) ?? 8;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 

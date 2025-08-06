@@ -1,3 +1,4 @@
+import { CarStatus, CarType } from '@prisma/client';
 import {
   IsInt,
   IsNotEmpty,
@@ -24,10 +25,6 @@ export class CreateCarDTO {
   @IsString({ message: '모델명은 문자열이어야 합니다.' })
   @Length(1, 100, { message: '모델명은 1자 이상 100자 이하이어야 합니다.' })
   model: string;
-
-  @IsNotEmpty({ message: '차량 유형은 필수 입력 항목입니다.' })
-  @IsString({ message: '차량 유형은 문자열이어야 합니다.' })
-  type: '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카';
 
   @IsNotEmpty({ message: '연식은 필수 입력 항목입니다.' })
   @IsInt({ message: '연식은 숫자여야 합니다.' })
@@ -63,12 +60,12 @@ export interface CarResponseDto {
   carNumber: string;
   manufacturer: string;
   model: string;
-  type: '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카';
+  type: CarType;
   manufacturingYear: number;
   mileage: number;
   price: number;
   accidentCount: number;
   explanation?: string | null;
   accidentDetails?: string | null;
-  status: 'possession' | 'contractProceeding' | 'contractCompleted';
+  status: CarStatus;
 }

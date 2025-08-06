@@ -357,4 +357,88 @@ export default class ContractDocumentsService {
 
     await this.emailService.sendEmail(contract.customer.email, subject, html, attachments);
   }
+  async getDocumentForDownload(
+    companyId: number,
+    contractDocumentId: number,
+  ): Promise<{ filePath: string; fileName: string; fileType: string }> {
+    const document = await this.contractDocumentsRepository.findDocumentById(
+      contractDocumentId,
+      companyId,
+    );
+
+    if (!document) {
+      throw new NotFoundError('문서를 찾을 수 없습니다.');
+    }
+
+    // 파일 존재 여부 확인
+    try {
+      await fs.access(document.filePath);
+    } catch (error) {
+      throw new NotFoundError('파일을 찾을 수 없습니다.');
+    }
+
+    // MIME 타입 결정
+    const ext = path.extname(document.fileName).toLowerCase();
+    let fileType = 'application/octet-stream';
+
+    switch (ext) {
+      case '.pdf':
+        fileType = 'application/pdf';
+        break;
+      case '.doc':
+        fileType = 'application/msword';
+        break;
+      case '.docx':
+        fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        break;
+      case '.jpg':
+      case '.jpeg':
+        fileType = 'image/jpeg';
+        break;
+      case '.png':
+        fileType = 'image/png';
+        break;
+    }
+
+    return {
+      filePath: document.filePath,
+      fileName: document.fileName,
+      fileType,
+    };
+  }
+
+  async downloadMultipleDocuments(
+    companyId: number,
+    contractDocumentIds: number[],
+  ): Promise<Buffer> {
+    if (!contractDocumentIds || contractDocumentIds.length === 0) {
+      throw new BadRequestError('다운로드할 문서를 선택해주세요.');
+    }
+
+    const documents = await this.contractDocumentsRepository.findDocumentsByIds(
+      contractDocumentIds,
+      companyId,
+    );
+
+    if (documents.length === 0) {
+      throw new NotFoundError('문서를 찾을 수 없습니다.');
+    }
+
+    // 파일들이 실제로 존재하는지 확인
+    const validDocuments = [];
+    for (const doc of documents) {
+      try {
+        await fs.access(doc.filePath);
+        validDocuments.push(doc);
+      } catch (error) {
+        console.error(`파일을 찾을 수 없음: ${doc.filePath}`);
+      }
+    }
+
+    if (validDocuments.length === 0) {
+      throw new NotFoundError('다운로드 가능한 파일이 없습니다.');
+    }
+
+    return await this.createZipFile(validDocuments);
+  }
 }
