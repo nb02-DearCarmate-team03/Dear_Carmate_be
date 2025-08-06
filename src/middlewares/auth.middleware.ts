@@ -22,7 +22,7 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
   try {
     const { authorization: authHeader } = req.headers;
     if (!authHeader?.startsWith('Bearer ')) {
-      res.status(401).json({ message: '인증이 필요합니다.' });
+      res.status(401).json({ message: '로그인이 필요합니다.' });
       return;
     }
 
@@ -41,14 +41,14 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
       } else if (err instanceof JsonWebTokenError) {
         res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
       } else {
-        res.status(401).json({ message: '인증이 필요합니다.' });
+        res.status(401).json({ message: '로그인이 필요합니다.' });
       }
       return;
     }
 
     const { id, email, name, isAdmin, companyId } = decoded as User;
     if (id && email && name) {
-      req.user = { id, email, name, isAdmin, companyId }; // is
+      req.user = { id, email, name, isAdmin, companyId };
       next();
     } else {
       res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
@@ -60,7 +60,7 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
 
 export const authorizeAdmin = (req: AuthRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    res.status(401).json({ message: '인증이 필요합니다.' });
+    res.status(401).json({ message: '로그인이 필요합니다.' });
     return;
   }
   // 관리자 권한 확인
