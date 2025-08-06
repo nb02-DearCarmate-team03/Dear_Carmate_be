@@ -5,8 +5,9 @@ import authRouter from './auth/auth.routes';
 import companiesRouter from './companies/companies.routes';
 import createCustomerRoutes from './customers/customers.routes';
 import { dashboardRouter } from './dashboard/dashboard.routes';
-import prisma from './common/prisma/client';
 import carsRouter from './cars/cars.routes';
+import createCsvUploadRouter from './uploads/router';
+import prisma from './common/prisma/client';
 import createContractDocumentsRouter from './contract-documents/contract-documents.routes';
 
 const router = express.Router();
