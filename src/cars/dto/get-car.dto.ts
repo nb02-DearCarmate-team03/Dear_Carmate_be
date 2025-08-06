@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsNumber, IsOptional, IsString, Length, Max, Min } from 'class-validator';
-import { Prisma } from '@prisma/client';
+import { CarStatus, Prisma } from '@prisma/client';
 import { CarResponseDto } from './create-car.dto';
 
 export class CarListQueryDto {
@@ -17,10 +17,10 @@ export class CarListQueryDto {
 
   @IsOptional()
   @IsString({ message: '상태는 문자열이어야 합니다.' })
-  @IsIn(['possession', 'contractProceeding', 'contractCompleted'], {
+  @IsIn([CarStatus.POSSESSION, CarStatus.CONTRACT_PROCEEDING, CarStatus.CONTRACT_COMPLETED], {
     message: '보유중, 계약 진행중, 계약 완료 중 하나여야 합니다.',
   })
-  status?: 'possession' | 'contractProceeding' | 'contractCompleted';
+  status?: CarStatus;
 
   @IsOptional()
   @IsString({ message: '검색 기준은 문자열이어야 합니다.' })

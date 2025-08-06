@@ -3,9 +3,9 @@ import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
+import stripBomStream from 'strip-bom-stream';
 import {
   AppError,
-  BadRequestError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
@@ -18,6 +18,12 @@ import { UpdateCarDto } from './dto/update-car.dto';
 import { UploadCarDto } from './dto/upload-car.dto';
 
 const BATCH_SIZE = 1000;
+
+const statusMapping = {
+  [CarStatus.POSSESSION]: 'possession',
+  [CarStatus.CONTRACT_PROCEEDING]: 'contractProceeding',
+  [CarStatus.CONTRACT_COMPLETED]: 'contractCompleted',
+};
 
 export interface CarModelOfManufacturer {
   manufacturer: string;
@@ -42,31 +48,8 @@ export default class CarService {
       throw new ConflictError('이미 존재하는 차량 번호입니다.');
     }
 
-    // 차량 유형 매핑
-    let prismaCarType: CarType;
-    switch (data.type) {
-      case '경·소형':
-        prismaCarType = CarType.COMPACT;
-        break;
-      case '준중·중형':
-        prismaCarType = CarType.MIDSIZE;
-        break;
-      case '대형':
-        prismaCarType = CarType.FULLSIZE;
-        break;
-      case '스포츠카':
-        prismaCarType = CarType.SPORTS;
-        break;
-      case 'SUV':
-        prismaCarType = CarType.SUV;
-        break;
-      default:
-        throw new BadRequestError(`유효하지 않은 차량 유형: ${data.type}`);
-    }
-
     const newCar = await this.carRepository.create({
       ...data,
-      type: prismaCarType,
       company: {
         connect: { id: companyId },
       },
@@ -77,27 +60,35 @@ export default class CarService {
       carNumber: newCar.carNumber,
       manufacturer: newCar.manufacturer,
       model: newCar.model,
-      type: newCar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: newCar.type as CarType,
       manufacturingYear: newCar.manufacturingYear,
       mileage: newCar.mileage,
       price: newCar.price.toNumber(),
       accidentCount: newCar.accidentCount,
       explanation: newCar.explanation,
       accidentDetails: newCar.accidentDetails,
-      status: newCar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: statusMapping[newCar.status] as CarStatus,
     };
   }
 
   async getCarList(query: CarListQueryDto): Promise<CarListResponseDto> {
-    const { page, pageSize, status, searchBy, keyword } = query;
+    const page = Number(query.page) ?? 1;
+    const pageSize = Number(query.pageSize) ?? 8;
+    const { status, searchBy, keyword } = query;
+
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
     const whereClause: Prisma.CarWhereInput = {};
 
-    // 차량 상태 필터링
-    if (status) {
-      whereClause.status = status as CarStatus;
+    const statusMap: Record<string, CarStatus> = {
+      possession: CarStatus.POSSESSION,
+      contractProceeding: CarStatus.CONTRACT_PROCEEDING,
+      contractCompleted: CarStatus.CONTRACT_COMPLETED,
+    };
+
+    if (status && statusMap[status]) {
+      whereClause.status = statusMap[status];
     }
 
     // 검색 기준, 검색어 필터링
@@ -129,14 +120,14 @@ export default class CarService {
       carNumber: car.carNumber,
       manufacturer: car.manufacturer,
       model: car.model,
-      type: car.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: car.type as CarType,
       manufacturingYear: car.manufacturingYear,
       mileage: car.mileage,
       price: car.price.toNumber(),
       accidentCount: car.accidentCount,
       explanation: car.explanation,
       accidentDetails: car.accidentDetails,
-      status: car.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: statusMapping[car.status] as CarStatus,
     }));
     const totalPages = Math.ceil(totalItemCount / pageSize);
     return {
@@ -174,31 +165,6 @@ export default class CarService {
       updateData.carNumber = data.carNumber;
     }
 
-    // 차량 유형 매핑
-    if (data.type !== undefined) {
-      let prismaCarType: CarType;
-      switch (data.type) {
-        case '경·소형':
-          prismaCarType = CarType.COMPACT;
-          break;
-        case '준중·중형':
-          prismaCarType = CarType.MIDSIZE;
-          break;
-        case '대형':
-          prismaCarType = CarType.FULLSIZE;
-          break;
-        case '스포츠카':
-          prismaCarType = CarType.SPORTS;
-          break;
-        case 'SUV':
-          prismaCarType = CarType.SUV;
-          break;
-        default:
-          throw new BadRequestError(`유효하지 않은 차량 유형: ${data.type}`);
-      }
-      updateData.type = prismaCarType;
-    }
-
     // 업데이트할 필드가 정의되어 있는 경우에만 추가
     if (data.manufacturer !== undefined) updateData.manufacturer = data.manufacturer;
     if (data.model !== undefined) updateData.model = data.model;
@@ -216,14 +182,14 @@ export default class CarService {
       carNumber: updatedCar.carNumber,
       manufacturer: updatedCar.manufacturer,
       model: updatedCar.model,
-      type: updatedCar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: updatedCar.type as CarType,
       manufacturingYear: updatedCar.manufacturingYear,
       mileage: updatedCar.mileage,
       price: updatedCar.price.toNumber(),
       accidentCount: updatedCar.accidentCount,
       explanation: updatedCar.explanation,
       accidentDetails: updatedCar.accidentDetails,
-      status: updatedCar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: updatedCar.status as CarStatus,
     };
   }
 
@@ -258,14 +224,14 @@ export default class CarService {
       carNumber: detailcar.carNumber,
       manufacturer: detailcar.manufacturer,
       model: detailcar.model,
-      type: detailcar.type as '경·소형' | '준중·중형' | '대형' | 'SUV' | '스포츠카',
+      type: detailcar.type as CarType,
       manufacturingYear: detailcar.manufacturingYear,
       mileage: detailcar.mileage,
       price: detailcar.price.toNumber(),
       accidentCount: detailcar.accidentCount,
       explanation: detailcar.explanation,
       accidentDetails: detailcar.accidentDetails,
-      status: detailcar.status as 'possession' | 'contractProceeding' | 'contractCompleted',
+      status: detailcar.status as CarStatus,
     };
   }
 
@@ -285,7 +251,7 @@ export default class CarService {
     });
 
     // 데이터(fileBuffer)를 한 줄 씩 읽는 기능
-    const readableStream = Readable.from(fileBuffer);
+    const readableStream = Readable.from(fileBuffer).pipe(stripBomStream());
 
     return new Promise((resolve, reject) => {
       /**
@@ -307,7 +273,9 @@ export default class CarService {
            * 유효성 검사 실패 시 'failedRecords'에 추가
            */
           try {
-            const carRecordDto = plainToInstance(UploadCarDto, record);
+            const carRecordDto = plainToInstance(UploadCarDto, record, {
+              excludeExtraneousValues: true,
+            });
             const errors = await validate(carRecordDto);
 
             if (errors.length > 0) {
@@ -395,7 +363,6 @@ export default class CarService {
               recordsToInsert.length = 0;
             }
           } catch (error: any) {
-            console.error(`Error processing record on line ${totalRecords}:`, error);
             failedRecords.push({
               lineNumber: totalRecords,
               record,
