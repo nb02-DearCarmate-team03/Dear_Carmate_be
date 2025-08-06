@@ -208,10 +208,10 @@ export class CustomerService {
       data: {
         companyId,
         userId,
-        fileUrl: '',
         fileName: file.originalname,
-        fileType: UploadType.CUSTOMER,
-        status: UploadStatus.PROCESSING,
+        fileUrl: '', // fileUrl은 필수 필드인데 빠져있음. 적절한 값 설정 필요
+        fileType: UploadType.CUSTOMER, // enum 사용
+        status: UploadStatus.PROCESSING, // enum 사용
       },
     });
 
@@ -266,7 +266,7 @@ export class CustomerService {
       await this.prisma.upload.update({
         where: { id: upload.id },
         data: {
-          status: UploadStatus.COMPLETED,
+          status: UploadStatus.COMPLETED, // enum 사용
           totalRecords: result.total,
           processedRecords: result.total,
           successRecords: result.success,
@@ -280,7 +280,7 @@ export class CustomerService {
       await this.prisma.upload.update({
         where: { id: upload.id },
         data: {
-          status: UploadStatus.FAILED,
+          status: UploadStatus.FAILED, // enum 사용
           errorMessage: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
         },
       });
