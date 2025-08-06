@@ -12,7 +12,7 @@ import { UploadCarDto } from './dto/upload-car.dto';
 import { ConflictError } from '../common/errors/conflict-error';
 import { NotFoundError } from '../common/errors/not-found-error';
 import { ForbiddenError } from '../common/errors/forbidden-error';
-import { UnauthorizedError } from '../common/errors/unauthorize-error';
+import { UnauthorizedError } from '../common/errors/unauthorized-error';
 import { AppError } from '../common/errors/app-error';
 
 const BATCH_SIZE = 1000;

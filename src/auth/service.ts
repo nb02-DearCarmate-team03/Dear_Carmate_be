@@ -3,7 +3,7 @@ import { AuthUserPayload } from './dto/login.dto';
 import AuthRepository from './repository';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, RefreshTokenPayload } from './jwt';
 import { NotFoundError } from '../common/errors/not-found-error';
-import { UnauthorizedError } from '../common/errors/unauthorize-error';
+import { UnauthorizedError } from '../common/errors/unauthorized-error';
 
 export interface LoginResponse {
   user: {

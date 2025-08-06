@@ -5,7 +5,7 @@ import UpdateUserDto, { UpdateUserResponse } from './dto/update-user.dto';
 import { ConflictError } from '../common/errors/conflict-error';
 import { BadRequestError } from '../common/errors/bad-request-error';
 import { NotFoundError } from '../common/errors/not-found-error';
-import { UnauthorizedError } from '../common/errors/unauthorize-error';
+import { UnauthorizedError } from '../common/errors/unauthorized-error';
 
 class UserService {
   /**
