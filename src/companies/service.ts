@@ -1,5 +1,4 @@
 import { Prisma } from '@prisma/client';
-import { ConflictError, NotFoundError } from '../middlewares/error.middleware';
 import { CompanyOutputDto, CreateCompanyDto } from './dto/create-company.dto';
 import {
   CompanyListQueryDto,
@@ -14,6 +13,8 @@ import {
   UserOutputDto,
 } from './dto/get-users.dto';
 import UpdateCompanyDto from './dto/update-companies.dto';
+import { ConflictError } from '../common/errors/conflict-error';
+import { NotFoundError } from '../common/errors/not-found-error';
 
 export default class CompanyService {
   private readonly companyRepository: CompanyRepository;
