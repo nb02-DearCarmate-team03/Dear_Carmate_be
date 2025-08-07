@@ -1,5 +1,13 @@
 /* eslint-disable */
-import { PrismaClient, Prisma, UploadType, UploadStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  UploadType,
+  UploadStatus,
+  Gender,
+  AgeGroup,
+  Region,
+} from '@prisma/client';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { CustomerRepository } from './repository';
@@ -9,11 +17,72 @@ import { ConflictError } from '../common/errors/conflict-error';
 import { NotFoundError } from '../common/errors/not-found-error';
 import { BadRequestError } from '../common/errors/bad-request-error';
 
+// Enum을 한글로 변환하는 유틸리티 함수들
+class EnumConverter {
+  // Gender enum을 한글로 변환
+  static genderToKorean(gender: Gender | null): string | null {
+    if (!gender) return null;
+
+    const genderMap: Record<Gender, string> = {
+      [Gender.MALE]: '남성',
+      [Gender.FEMALE]: '여성',
+    };
+
+    return genderMap[gender] || gender;
+  }
+
+  // AgeGroup enum을 한글로 변환
+  static ageGroupToKorean(ageGroup: AgeGroup | null): string | null {
+    if (!ageGroup) return null;
+
+    const ageGroupMap: Record<AgeGroup, string> = {
+      [AgeGroup.TEENAGER]: '10대',
+      [AgeGroup.TWENTIES]: '20대',
+      [AgeGroup.THIRTIES]: '30대',
+      [AgeGroup.FORTIES]: '40대',
+      [AgeGroup.FIFTIES]: '50대',
+      [AgeGroup.SIXTIES]: '60대',
+      [AgeGroup.SEVENTIES]: '70대',
+      [AgeGroup.EIGHTIES]: '80대',
+    };
+
+    return ageGroupMap[ageGroup] || ageGroup;
+  }
+
+  // Region enum을 한글로 변환
+  static regionToKorean(region: Region | null): string | null {
+    if (!region) return null;
+
+    const regionMap: Record<Region, string> = {
+      [Region.SEOUL]: '서울',
+      [Region.GYEONGGI]: '경기',
+      [Region.INCHEON]: '인천',
+      [Region.GANGWON]: '강원',
+      [Region.CHUNGBUK]: '충북',
+      [Region.CHUNGNAM]: '충남',
+      [Region.SEJONG]: '세종',
+      [Region.DAEJEON]: '대전',
+      [Region.JEONBUK]: '전북',
+      [Region.JEONNAM]: '전남',
+      [Region.GWANGJU]: '광주',
+      [Region.GYEONGBUK]: '경북',
+      [Region.GYEONGNAM]: '경남',
+      [Region.DAEGU]: '대구',
+      [Region.ULSAN]: '울산',
+      [Region.BUSAN]: '부산',
+      [Region.JEJU]: '제주',
+    };
+
+    return regionMap[region] || region;
+  }
+}
+
+// 프론트엔드가 기대하는 응답 구조 (한글로 변환된 값들)
 export interface CustomerListResponse {
   currentPage: number;
   totalPages: number;
   totalItemCount: number;
-  customers: Array<{
+  data: Array<{
     id: number;
     name: string;
     gender: string;
@@ -68,11 +137,11 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: customer.gender!, // DB에서는 nullable이지만 생성 시에는 필수
+      gender: EnumConverter.genderToKorean(customer.gender)!, // 한글로 변환
       phoneNumber: customer.phoneNumber,
-      ageGroup: customer.ageGroup,
-      region: customer.region,
-      email: customer.email!, // DB에서는 nullable이지만 생성 시에는 필수
+      ageGroup: EnumConverter.ageGroupToKorean(customer.ageGroup), // 한글로 변환
+      region: EnumConverter.regionToKorean(customer.region), // 한글로 변환
+      email: customer.email!,
       memo: customer.memo,
       contractCount: customer.contractCount,
     };
@@ -97,14 +166,14 @@ export class CustomerService {
       currentPage: page,
       totalPages: Math.ceil(total / pageSize),
       totalItemCount: total,
-      customers: customers.map((customer) => ({
+      data: customers.map((customer) => ({
         id: customer.id,
         name: customer.name,
-        gender: customer.gender!, // 기존 데이터는 null일 수 있지만 새 데이터는 필수
+        gender: EnumConverter.genderToKorean(customer.gender)!, // 한글로 변환
         phoneNumber: customer.phoneNumber,
-        ageGroup: customer.ageGroup,
-        region: customer.region,
-        email: customer.email!, // 기존 데이터는 null일 수 있지만 새 데이터는 필수
+        ageGroup: EnumConverter.ageGroupToKorean(customer.ageGroup), // 한글로 변환
+        region: EnumConverter.regionToKorean(customer.region), // 한글로 변환
+        email: customer.email!,
         memo: customer.memo,
         contractCount: customer.contractCount,
       })),
@@ -121,11 +190,11 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: customer.gender!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      gender: EnumConverter.genderToKorean(customer.gender)!, // 한글로 변환
       phoneNumber: customer.phoneNumber,
-      ageGroup: customer.ageGroup,
-      region: customer.region,
-      email: customer.email!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      ageGroup: EnumConverter.ageGroupToKorean(customer.ageGroup), // 한글로 변환
+      region: EnumConverter.regionToKorean(customer.region), // 한글로 변환
+      email: customer.email!,
       memo: customer.memo,
       contractCount: customer.contractCount,
     };
@@ -171,11 +240,11 @@ export class CustomerService {
     return {
       id: updatedCustomer.id,
       name: updatedCustomer.name,
-      gender: updatedCustomer.gender!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      gender: EnumConverter.genderToKorean(updatedCustomer.gender)!, // 한글로 변환
       phoneNumber: updatedCustomer.phoneNumber,
-      ageGroup: updatedCustomer.ageGroup,
-      region: updatedCustomer.region,
-      email: updatedCustomer.email!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      ageGroup: EnumConverter.ageGroupToKorean(updatedCustomer.ageGroup), // 한글로 변환
+      region: EnumConverter.regionToKorean(updatedCustomer.region), // 한글로 변환
+      email: updatedCustomer.email!,
       memo: updatedCustomer.memo,
       contractCount: updatedCustomer.contractCount,
     };
