@@ -1,11 +1,13 @@
 /* eslint-disable */
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, UploadType, UploadStatus } from '@prisma/client';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { CustomerRepository } from './repository';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { NotFoundError, BadRequestError, ConflictError } from '../middlewares/error.middleware';
+import { ConflictError } from '../common/errors/conflict-error';
+import { NotFoundError } from '../common/errors/not-found-error';
+import { BadRequestError } from '../common/errors/bad-request-error';
 
 export interface CustomerListResponse {
   currentPage: number;
@@ -207,8 +209,9 @@ export class CustomerService {
         companyId,
         userId,
         fileName: file.originalname,
-        fileType: 'CUSTOMER',
-        status: 'PROCESSING',
+        fileUrl: '', // fileUrl은 필수 필드인데 빠져있음. 적절한 값 설정 필요
+        fileType: UploadType.CUSTOMER, // enum 사용
+        status: UploadStatus.PROCESSING, // enum 사용
       },
     });
 
@@ -263,7 +266,7 @@ export class CustomerService {
       await this.prisma.upload.update({
         where: { id: upload.id },
         data: {
-          status: 'COMPLETED',
+          status: UploadStatus.COMPLETED, // enum 사용
           totalRecords: result.total,
           processedRecords: result.total,
           successRecords: result.success,
@@ -277,7 +280,7 @@ export class CustomerService {
       await this.prisma.upload.update({
         where: { id: upload.id },
         data: {
-          status: 'FAILED',
+          status: UploadStatus.FAILED, // enum 사용
           errorMessage: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
         },
       });

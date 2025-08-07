@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import AuthService, { LoginResponse } from './service';
 import { LoginDto } from './dto/login.dto';
-import { BadRequestError } from '../middlewares/error.middleware';
+import { BadRequestError } from '../common/errors/bad-request-error';
 
 class AuthController {
   private readonly authService: AuthService;

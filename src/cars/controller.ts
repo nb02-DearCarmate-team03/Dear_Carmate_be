@@ -1,11 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthRequest } from 'src/middlewares/auth.middleware';
 import multer from 'multer';
-import { BadRequestError, UnauthorizedError } from '../middlewares/error.middleware';
 import { CreateCarDTO } from './dto/create-car.dto';
 import CarService, { CarModelListResponseDto } from './service';
 import { CarListQueryDto } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
+import { BadRequestError } from '../common/errors/bad-request-error';
+import { UnauthorizedError } from '../common/errors/unauthorized-error';
 
 const storage = multer.memoryStorage();
 

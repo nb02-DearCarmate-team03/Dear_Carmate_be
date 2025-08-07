@@ -1,24 +1,29 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { BadRequestError } from '../common/utils/custom-errors';
+import { BadRequestError } from '../common/errors/bad-request-error';
 
-// 업로드 디렉토리 생성
+// 업로드 디렉토리 경로
 const uploadDir = path.join(process.cwd(), 'uploads', 'contracts');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 // 파일 저장 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    // 비동기 mkdir을 then/catch로 처리 (multer는 async 함수를 destination에 허용하지 않음)
+    fs.promises
+      .mkdir(uploadDir, { recursive: true })
+      .then(() => cb(null, uploadDir))
+      .catch((err) => cb(err as Error, uploadDir));
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, `${name}-${uniqueSuffix}${ext}`);
+    try {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const ext = path.extname(file.originalname);
+      const name = path.basename(file.originalname, ext);
+      cb(null, `${name}-${uniqueSuffix}${ext}`);
+    } catch (err) {
+      cb(err as Error, file.originalname);
+    }
   },
 });
 
@@ -44,7 +49,7 @@ const upload = multer({
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
-    files: 10, // 최대 10개 파일
+    files: 10, // 최대 10개
   },
 });
 

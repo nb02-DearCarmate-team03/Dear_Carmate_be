@@ -6,8 +6,9 @@ import archiver from 'archiver';
 import { Readable } from 'stream';
 import ContractDocumentsRepository from './repository';
 import GetContractDocumentsDto from './dto/get-contract-documents.dto';
-import { BadRequestError, NotFoundError } from '../common/utils/custom-errors';
 import EmailService from '../common/email.service';
+import { NotFoundError } from '../common/errors/not-found-error';
+import { BadRequestError } from '../common/errors/bad-request-error';
 
 interface ContractDocumentWithRelations extends ContractDocument {
   contract: {
