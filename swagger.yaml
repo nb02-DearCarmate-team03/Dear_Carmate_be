@@ -1,0 +1,1526 @@
+openapi: 3.0.0
+info:
+  title: Car Contract Management System API
+  description: 중고차 계약 관리 시스템 API 문서
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@carmate.com
+servers:
+  - url: http://localhost:${process.env.PORT || 3000}/api
+    description: Development server
+    # 배포 전이므로 주석 처리
+  # - url: ${process.env.PROD_SERVER_URL || 'https://api.carmate.com/api'}
+  #  description: Production server
+tags:
+  - name: Auth
+    description: 인증 관련 API
+  - name: Users
+    description: 사용자 관리 API
+  - name: Companies
+    description: 회사 관리 API (Admin)
+  - name: Cars
+    description: 차량 관리 API
+  - name: Customers
+    description: 고객 관리 API
+  - name: Contracts
+    description: 계약 관리 API
+  - name: ContractDocuments
+    description: 계약서 관리 API
+  - name: Dashboard
+    description: 대시보드 통계 API
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: 로그인
+      description: 이메일과 비밀번호로 로그인
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: 'user@example.com'
+                password:
+                  type: string
+                  format: password
+                  example: 'password123'
+      responses:
+        '200':
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserLoginResponse'
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: 토큰 갱신
+      description: Refresh Token을 사용하여 새로운 Access Token 발급
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: 토큰 갱신 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /users:
+    post:
+      tags:
+        - Users
+      summary: 회원가입
+      description: 새로운 사용자 등록
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: 회원가입 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: 내 정보 조회
+      description: 로그인한 사용자의 정보 조회
+      responses:
+        '200':
+          description: 사용자 정보 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags:
+        - Users
+      summary: 내 정보 수정
+      description: 로그인한 사용자의 정보 수정
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: 정보 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    delete:
+      tags:
+        - Users
+      summary: 회원 탈퇴
+      description: 로그인한 사용자 계정 삭제
+      responses:
+        '200':
+          description: 회원 탈퇴 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '유저 삭제 성공'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{userId}:
+    delete:
+      tags:
+        - Users
+      summary: 사용자 삭제 (Admin)
+      description: 특정 사용자 삭제 (관리자 권한 필요)
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 사용자 삭제 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '유저 삭제 성공'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies:
+    post:
+      tags:
+        - Companies
+      summary: 회사 등록 (Admin)
+      description: 새로운 회사 등록 (관리자 권한 필요)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompanyRequest'
+      responses:
+        '201':
+          description: 회사 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Companies
+      summary: 회사 목록 조회 (Admin)
+      description: 등록된 회사 목록 조회 (관리자 권한 필요)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: searchBy
+          schema:
+            type: string
+            enum: [companyName, companyCode]
+        - $ref: '#/components/parameters/KeywordParam'
+      responses:
+        '200':
+          description: 회사 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /companies/{companyId}:
+    patch:
+      tags:
+        - Companies
+      summary: 회사 정보 수정 (Admin)
+      description: 회사 정보 수정 (관리자 권한 필요)
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompanyRequest'
+      responses:
+        '200':
+          description: 회사 정보 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Companies
+      summary: 회사 삭제 (Admin)
+      description: 회사 삭제 (관리자 권한 필요)
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 회사 삭제 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '회사 삭제 성공'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /companies/users:
+    get:
+      tags:
+        - Companies
+      summary: 회사별 유저 목록 조회 (Admin)
+      description: 회사별 유저 목록 조회 (관리자 권한 필요)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: searchBy
+          schema:
+            type: string
+            enum: [companyName, name, email]
+        - $ref: '#/components/parameters/KeywordParam'
+      responses:
+        '200':
+          description: 유저 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cars:
+    post:
+      tags:
+        - Cars
+      summary: 차량 등록
+      description: 새로운 차량 정보 등록
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCarRequest'
+      responses:
+        '201':
+          description: 차량 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+    get:
+      tags:
+        - Cars
+      summary: 차량 목록 조회
+      description: 등록된 차량 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [possession, contractProceeding, contractCompleted]
+        - in: query
+          name: searchBy
+          schema:
+            type: string
+            enum: [carNumber, model]
+        - $ref: '#/components/parameters/KeywordParam'
+      responses:
+        '200':
+          description: 차량 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cars/models:
+    get:
+      tags:
+        - Cars
+      summary: 차량 모델 목록 조회
+      description: 제조사별 차량 모델 목록 조회
+      responses:
+        '200':
+          description: 차량 모델 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        manufacturer:
+                          type: string
+                        model:
+                          type: array
+                          items:
+                            type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /cars/{carId}:
+    get:
+      tags:
+        - Cars
+      summary: 차량 상세 조회
+      description: 특정 차량의 상세 정보 조회
+      parameters:
+        - in: path
+          name: carId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 차량 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Cars
+      summary: 차량 정보 수정
+      description: 차량 정보 수정
+      parameters:
+        - in: path
+          name: carId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCarRequest'
+      responses:
+        '200':
+          description: 차량 정보 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Cars
+      summary: 차량 삭제
+      description: 차량 정보 삭제
+      parameters:
+        - in: path
+          name: carId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 차량 삭제 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '차량 삭제 성공'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cars/upload:
+    post:
+      tags:
+        - Cars
+      summary: 차량 대용량 업로드
+      description: CSV 파일을 통한 차량 정보 대용량 등록
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 차량 업로드 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'CSV 파일 처리가 완료되었습니다.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /customers:
+    post:
+      tags:
+        - Customers
+      summary: 고객 등록
+      description: 새로운 고객 정보 등록
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: 고객 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Customers
+      summary: 고객 목록 조회
+      description: 등록된 고객 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: searchBy
+          schema:
+            type: string
+            enum: [name, email]
+        - $ref: '#/components/parameters/KeywordParam'
+      responses:
+        '200':
+          description: 고객 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /customers/{customerId}:
+    get:
+      tags:
+        - Customers
+      summary: 고객 상세 조회
+      description: 특정 고객의 상세 정보 조회
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 고객 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Customers
+      summary: 고객 정보 수정
+      description: 고객 정보 수정
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+      responses:
+        '200':
+          description: 고객 정보 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Customers
+      summary: 고객 삭제
+      description: 고객 정보 삭제
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 고객 삭제 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '고객 삭제 성공'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /customers/upload:
+    post:
+      tags:
+        - Customers
+      summary: 고객 대용량 업로드
+      description: CSV 파일을 통한 고객 정보 대용량 등록
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 고객 업로드 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '업로드가 완료되었습니다.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /contracts/contractDocumentId/download:
+    get:
+      tags:
+        - ContractDocuments
+      summary: 계약서 다운로드
+      description: 단일 계약서 파일 다운로드
+      parameters:
+        - in: path
+          name: contractDocumentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 계약서 다운로드 성공
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /contracts/contractId:
+    patch:
+      tags:
+        - ContractDocuments
+      summary: 계약서 수정
+      description: 계약서 추가/삭제
+      parameters:
+        - in: path
+          name: contractId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                deleteDocumentIds:
+                  type: array
+                  items:
+                    type: integer
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '200':
+          description: 계약서 수정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '계약서 수정 성공'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /contractDocuments:
+    get:
+      tags:
+        - ContractDocuments
+      summary: 계약서 목록 조회
+      description: 등록된 계약서 목록 조회
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: searchBy
+          schema:
+            type: string
+            enum: [contractName, userName]
+        - $ref: '#/components/parameters/KeywordParam'
+      responses:
+        '200':
+          description: 계약서 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractDocumentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /contractDocuments/upload:
+    post:
+      tags:
+        - ContractDocuments
+      summary: 계약서 업로드
+      description: 계약서 파일 업로드 (최대 10개, 각 파일 최대 10MB)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - contractId
+                - files
+              properties:
+                contractId:
+                  type: integer
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+      responses:
+        '200':
+          description: 계약서 업로드 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: '계약서 업로드 성공'
+                  contractDocumentId:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /contractDocuments/download:
+    post:
+      tags:
+        - ContractDocuments
+      summary: 계약서 다중 다운로드
+      description: 여러 계약서를 ZIP 파일로 다운로드
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contractDocumentIds
+              properties:
+                contractDocumentIds:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 계약서 다운로드 성공
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dashboard:
+    get:
+      tags:
+        - Dashboard
+      summary: 대시보드 통계 조회
+      description: 대시보드 요약 통계 정보 조회
+      responses:
+        '200':
+          description: 대시보드 통계 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /images/upload:
+    post:
+      tags:
+        - Images
+      summary: 이미지 URL 생성
+      description: 이미지 업로드를 위한 presigned URL 생성
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 이미지 URL 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imageUrl:
+                    type: string
+                    example: 'https://s3.amazonaws.com/...'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        default: 1
+      description: 페이지 번호
+
+    PageSizeParam:
+      in: query
+      name: pageSize
+      schema:
+        type: integer
+        default: 8
+      description: 페이지당 아이템 수
+
+    KeywordParam:
+      in: query
+      name: keyword
+      schema:
+        type: string
+      description: 검색 키워드
+
+  schemas:
+    # User schemas
+    RegisterUserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - employeeNumber
+        - phoneNumber
+        - password
+        - passwordConfirmation
+        - company
+        - companyCode
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        password:
+          type: string
+          format: password
+        passwordConfirmation:
+          type: string
+          format: password
+        company:
+          type: string
+        companyCode:
+          type: string
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        currentPassword:
+          type: string
+        password:
+          type: string
+        passwordConfirmation:
+          type: string
+        imageUrl:
+          type: string
+
+    UserLoginResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        isAdmin:
+          type: boolean
+        imageUrl:
+          type: string
+        company:
+          type: object
+          properties:
+            companyCode:
+              type: string
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        imageUrl:
+          type: string
+        isAdmin:
+          type: boolean
+        company:
+          type: object
+          properties:
+            companyCode:
+              type: string
+
+    UserListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              email:
+                type: string
+              employeeNumber:
+                type: string
+              phoneNumber:
+                type: string
+              company:
+                type: object
+                properties:
+                  companyName:
+                    type: string
+
+    # Company schemas
+    CreateCompanyRequest:
+      type: object
+      required:
+        - companyName
+        - companyCode
+      properties:
+        companyName:
+          type: string
+        companyCode:
+          type: string
+
+    UpdateCompanyRequest:
+      type: object
+      properties:
+        companyName:
+          type: string
+        companyCode:
+          type: string
+
+    CompanyResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        companyName:
+          type: string
+        companyCode:
+          type: string
+        userCount:
+          type: integer
+
+    CompanyListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyResponse'
+
+    # Car schemas
+    CreateCarRequest:
+      type: object
+      required:
+        - carNumber
+        - manufacturer
+        - model
+        - type
+        - manufacturingYear
+        - mileage
+        - price
+      properties:
+        carNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        type:
+          $ref: '#/components/schemas/CarType'
+        manufacturingYear:
+          type: integer
+        mileage:
+          type: integer
+        price:
+          type: number
+        accidentCount:
+          type: integer
+          default: 0
+        explanation:
+          type: string
+        accidentDetails:
+          type: string
+
+    UpdateCarRequest:
+      type: object
+      properties:
+        carNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        manufacturingYear:
+          type: integer
+        mileage:
+          type: integer
+        price:
+          type: number
+        accidentCount:
+          type: integer
+        explanation:
+          type: string
+        accidentDetails:
+          type: string
+
+    CarResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        carNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        type:
+          $ref: '#/components/schemas/CarType'
+        manufacturingYear:
+          type: integer
+        mileage:
+          type: integer
+        price:
+          type: number
+        accidentCount:
+          type: integer
+        explanation:
+          type: string
+        accidentDetails:
+          type: string
+        status:
+          $ref: '#/components/schemas/CarStatus'
+
+    CarListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CarResponse'
+
+    # Customer schemas
+    CreateCustomerRequest:
+      type: object
+      required:
+        - name
+        - gender
+        - phoneNumber
+        - email
+      properties:
+        name:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        phoneNumber:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        region:
+          $ref: '#/components/schemas/Region'
+        email:
+          type: string
+          format: email
+        memo:
+          type: string
+
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        phoneNumber:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        region:
+          $ref: '#/components/schemas/Region'
+        email:
+          type: string
+          format: email
+        memo:
+          type: string
+
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        phoneNumber:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        region:
+          $ref: '#/components/schemas/Region'
+        email:
+          type: string
+        memo:
+          type: string
+        contractCount:
+          type: integer
+
+    CustomerListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerResponse'
+
+    # Contract Document schemas
+    ContractDocumentListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              contractName:
+                type: string
+              resolutionDate:
+                type: string
+                format: date
+              documentsCount:
+                type: integer
+              manager:
+                type: string
+              carNumber:
+                type: string
+              documents:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    fileName:
+                      type: string
+
+    # Dashboard schemas
+    DashboardResponse:
+      type: object
+      properties:
+        monthlySales:
+          type: number
+        lastMonthSales:
+          type: number
+        growthRate:
+          type: number
+        proceedingContractsCount:
+          type: integer
+        completedContractsCount:
+          type: integer
+        contractsByCarType:
+          type: array
+          items:
+            type: object
+            properties:
+              carType:
+                $ref: '#/components/schemas/CarType'
+              count:
+                type: integer
+        salesByCarType:
+          type: array
+          items:
+            type: object
+            properties:
+              carType:
+                $ref: '#/components/schemas/CarType'
+              amount:
+                type: number
+
+    # Enums
+    CarType:
+      type: string
+      enum:
+        - 경·소형
+        - 준중·중형
+        - 대형
+        - 스포츠카
+        - SUV
+
+    CarStatus:
+      type: string
+      enum:
+        - possession
+        - contractProceeding
+        - contractCompleted
+
+    Gender:
+      type: string
+      enum:
+        - male
+        - female
+
+    AgeGroup:
+      type: string
+      enum:
+        - 10대
+        - 20대
+        - 30대
+        - 40대
+        - 50대
+        - 60대
+        - 70대
+        - 80대
+
+    Region:
+      type: string
+      enum:
+        - 서울
+        - 경기
+        - 인천
+        - 강원
+        - 충북
+        - 충남
+        - 세종
+        - 대전
+        - 전북
+        - 전남
+        - 광주
+        - 경북
+        - 경남
+        - 대구
+        - 울산
+        - 부산
+        - 제주
+
+    ContractStatus:
+      type: string
+      enum:
+        - car_inspection
+        - price_negotiation
+        - contractDraft
+        - contract_successful
+        - contract_failed
+
+    Possession:
+      type: string
+      enum:
+        - pending
+        - processing
+        - completed
+
+    # Error schemas
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '잘못된 요청입니다'
+            code: 'BAD_REQUEST'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    Unauthorized:
+      description: 인증이 필요합니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '로그인이 필요합니다'
+            code: 'UNAUTHORIZED'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    Forbidden:
+      description: 권한이 없습니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '접근 권한이 없습니다'
+            code: 'FORBIDDEN'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    NotFound:
+      description: 리소스를 찾을 수 없습니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '존재하지 않는 리소스입니다'
+            code: 'NOT_FOUND'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    Conflict:
+      description: 충돌이 발생했습니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '이미 존재하는 데이터입니다'
+            code: 'CONFLICT'
+            timestamp: '2024-01-01T00:00:00Z'
