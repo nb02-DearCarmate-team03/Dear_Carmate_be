@@ -23,6 +23,14 @@ const statusMapping = {
   [CarStatus.CONTRACT_COMPLETED]: 'contractCompleted',
 };
 
+const typeMapping = {
+  [CarType.COMPACT]: '경·소형',
+  [CarType.MIDSIZE]: '준중·중형',
+  [CarType.FULLSIZE]: '대형',
+  [CarType.SPORTS]: '스포츠카',
+  [CarType.SUV]: 'SUV',
+};
+
 export interface CarModelOfManufacturer {
   manufacturer: string;
   model: string[];
@@ -58,7 +66,7 @@ export default class CarService {
       carNumber: newCar.carNumber,
       manufacturer: newCar.manufacturer,
       model: newCar.model,
-      type: newCar.type as CarType,
+      type: typeMapping[newCar.type] as CarType,
       manufacturingYear: newCar.manufacturingYear,
       mileage: newCar.mileage,
       price: newCar.price.toNumber(),
@@ -118,7 +126,7 @@ export default class CarService {
       carNumber: car.carNumber,
       manufacturer: car.manufacturer,
       model: car.model,
-      type: car.type as CarType,
+      type: typeMapping[car.type] as CarType,
       manufacturingYear: car.manufacturingYear,
       mileage: car.mileage,
       price: car.price.toNumber(),
