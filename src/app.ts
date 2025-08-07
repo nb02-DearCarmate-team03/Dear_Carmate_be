@@ -2,13 +2,20 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import errorHandler from './middlewares/error.middleware';
 import passport from './auth/passport';
+import swaggerOptions from '../swagger-options';
 
 import indexRouter from './index.routes';
 
 const app = express();
+
+const specs = swaggerJsdoc(swaggerOptions);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 app.use(morgan('dev'));
 app.use(cors());
