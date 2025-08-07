@@ -7,10 +7,10 @@ info:
     name: API Support
     email: support@carmate.com
 servers:
-  - url: http://localhost:${process.env.PORT || 3000}/api
+  - url: http://localhost:${process.env.PORT || 3000}
     description: Development server
     # 배포 전이므로 주석 처리
-  # - url: ${process.env.PROD_SERVER_URL || 'https://api.carmate.com/api'}
+  # - url: ${process.env.PROD_SERVER_URL || 'https://api.carmate.com'}
   #  description: Production server
 tags:
   - name: Auth
@@ -54,11 +54,11 @@ paths:
                 email:
                   type: string
                   format: email
-                  example: 'user@example.com'
+                  example: 'user1@sunshine.com'
                 password:
                   type: string
                   format: password
-                  example: 'password123'
+                  example: 'password'
       responses:
         '200':
           description: 로그인 성공
@@ -717,7 +717,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /contracts/contractDocumentId/download:
+  /contractDocuments/{contractDocumentId}/download:
     get:
       tags:
         - ContractDocuments
@@ -742,7 +742,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /contracts/contractId:
+  /contractDocuments/{contractId}:
     patch:
       tags:
         - ContractDocuments

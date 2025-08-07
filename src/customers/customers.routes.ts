@@ -66,7 +66,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/customers:
+   * /customers:
    *   post:
    *     tags:
    *       - Customers
@@ -142,7 +142,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/customers:
+   * /customers:
    *   get:
    *     tags:
    *       - Customers
@@ -220,7 +220,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/customers/{customerId}:
+   * /customers/{customerId}:
    *   get:
    *     tags:
    *       - Customers
@@ -272,7 +272,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/customers/{customerId}:
+   * /customers/{customerId}:
    *   patch:
    *     tags:
    *       - Customers
@@ -348,7 +348,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/customers/{customerId}:
+   * /customers/{customerId}:
    *   delete:
    *     tags:
    *       - Customers
@@ -385,7 +385,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/customers/upload:
+   * /customers/upload:
    *   post:
    *     tags:
    *       - Customers

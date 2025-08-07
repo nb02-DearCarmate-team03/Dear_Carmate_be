@@ -23,7 +23,7 @@ const CompaniesRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/companies:
+   * /companies:
    *   post:
    *     tags:
    *       - Companies
@@ -75,7 +75,7 @@ const CompaniesRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/companies:
+   * /companies:
    *   get:
    *     tags:
    *       - Companies
@@ -144,7 +144,7 @@ const CompaniesRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/companies/users:
+   * /companies/users:
    *   get:
    *     tags:
    *       - Companies
@@ -220,7 +220,7 @@ const CompaniesRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/companies/{companyId}:
+   * /companies/{companyId}:
    *   patch:
    *     tags:
    *       - Companies
@@ -276,7 +276,7 @@ const CompaniesRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/companies/{companyId}:
+   * /companies/{companyId}:
    *   delete:
    *     tags:
    *       - Companies

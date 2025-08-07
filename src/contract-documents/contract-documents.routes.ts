@@ -21,7 +21,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
 
   /**
    * @swagger
-   * /api/contractDocuments:
+   * /contractDocuments:
    *   get:
    *     tags:
    *       - ContractDocuments
@@ -108,7 +108,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
 
   /**
    * @swagger
-   * /api/contractDocuments/upload:
+   * /contractDocuments/upload:
    *   post:
    *     tags:
    *       - ContractDocuments
@@ -175,7 +175,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
 
   /**
    * @swagger
-   * /api/contractDocuments/{contractDocumentId}/download:
+   * /contractDocuments/{contractDocumentId}/download:
    *   get:
    *     tags:
    *       - ContractDocuments
@@ -221,7 +221,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
 
   /**
    * @swagger
-   * /api/contractDocuments/download:
+   * /contractDocuments/download:
    *   post:
    *     tags:
    *       - ContractDocuments
@@ -286,7 +286,7 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
 
   /**
    * @swagger
-   * /api/contractDocuments/{contractId}:
+   * /contractDocuments/{contractId}:
    *   patch:
    *     tags:
    *       - ContractDocuments
