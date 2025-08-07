@@ -28,7 +28,7 @@ export const dashboardRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/dashboard:
+   * /dashboard:
    *   get:
    *     tags:
    *       - Dashboard

@@ -40,7 +40,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars:
+   * /cars:
    *   post:
    *     tags:
    *       - Cars
@@ -137,7 +137,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars:
+   * /cars:
    *   get:
    *     tags:
    *       - Cars
@@ -226,7 +226,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars/models:
+   * /cars/models:
    *   get:
    *     tags:
    *       - Cars
@@ -263,7 +263,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars/{carId}:
+   * /cars/{carId}:
    *   patch:
    *     tags:
    *       - Cars
@@ -320,7 +320,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars/{carId}:
+   * /cars/{carId}:
    *   delete:
    *     tags:
    *       - Cars
@@ -358,7 +358,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars/{carId}:
+   * /cars/{carId}:
    *   get:
    *     tags:
    *       - Cars
@@ -415,7 +415,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/cars/upload:
+   * /cars/upload:
    *   post:
    *     tags:
    *       - Cars

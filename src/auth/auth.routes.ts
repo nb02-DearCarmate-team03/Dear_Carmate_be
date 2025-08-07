@@ -15,7 +15,7 @@ const authRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/auth/login:
+   * /auth/login:
    *   post:
    *     tags:
    *       - Auth
@@ -100,7 +100,7 @@ const authRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/auth/refresh:
+   * /auth/refresh:
    *   post:
    *     tags:
    *       - Auth

@@ -18,7 +18,7 @@ const userRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/users:
+   * /users:
    *   post:
    *     tags:
    *       - Users
@@ -105,7 +105,7 @@ const userRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/users/me:
+   * /users/me:
    *   get:
    *     tags:
    *       - Users
@@ -147,7 +147,7 @@ const userRouter = (prisma: PrismaClient): Router => {
   router.get('/me', isAuthenticated, userController.getInfo);
   /**
    * @swagger
-   * /api/users/me:
+   * /users/me:
    *   patch:
    *     tags:
    *       - Users
@@ -216,7 +216,7 @@ const userRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/users/me:
+   * /users/me:
    *   delete:
    *     tags:
    *       - Users
@@ -243,7 +243,7 @@ const userRouter = (prisma: PrismaClient): Router => {
 
   /**
    * @swagger
-   * /api/users/{userId}:
+   * /users/{userId}:
    *   delete:
    *     tags:
    *       - Users
