@@ -11,7 +11,7 @@ class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(10, { message: '현재 비밀번호는 최소 10자 이상입니다.' })
+  @MinLength(8, { message: '현재 비밀번호는 최소 8자 이상입니다.' })
   currentPassword?: string;
 
   @IsString()
