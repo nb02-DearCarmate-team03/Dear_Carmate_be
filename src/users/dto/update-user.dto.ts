@@ -15,12 +15,12 @@ class UpdateUserDto {
   currentPassword?: string;
 
   @IsString()
-  @MinLength(10, { message: '비밀번호는 최소 10자 이상이어야 합니다.' })
+  @MinLength(8, { message: '비밀번호는 최소 8자 이상이어야 합니다.' })
   @MaxLength(255, { message: '비밀번호는 최대 255자 이하여야 합니다.' })
   password?: string;
 
   @IsString()
-  @MinLength(10, { message: '비밀번호 확인은 최소 10자 이상이어야 합니다.' })
+  @MinLength(8, { message: '비밀번호 확인은 최소 8자 이상이어야 합니다.' })
   @MaxLength(255, { message: '비밀번호 확인은 최대 255자 이하여야 합니다.' })
   passwordConfirmation?: string;
 
