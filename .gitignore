@@ -4,4 +4,3 @@
 dist/
 /src/generated/prisma
 /src/common/generated/prisma/
-uploads/
