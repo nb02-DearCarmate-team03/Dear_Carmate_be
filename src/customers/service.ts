@@ -23,12 +23,15 @@ class EnumConverter {
   static genderToKorean(gender: Gender | null): string | null {
     if (!gender) return null;
 
-    const genderMap: Record<Gender, string> = {
-      [Gender.MALE]: '남성',
-      [Gender.FEMALE]: '여성',
+    // Prisma에서 실제로 반환하는 값은 @map으로 정의된 "male", "female"입니다
+    const genderMap: Record<string, string> = {
+      male: 'male',
+      female: 'female',
+      MALE: 'male', // 혹시 모를 대문자 케이스도 처리
+      FEMALE: 'female',
     };
 
-    return genderMap[gender] || gender;
+    return genderMap[gender as string] || gender;
   }
 
   // AgeGroup enum을 한글로 변환
