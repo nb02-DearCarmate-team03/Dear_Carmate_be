@@ -6,7 +6,7 @@ import UploadRepository from './repository';
 import { CsvUploadCreateDto } from './dto/csv-upload-create.dto';
 import validateDto from '../common/utils/validate.dto';
 import { csvUploadMiddleware } from '../middlewares/csv-upload.middleware';
-import { isAuthenticated } from '../auth/auth';
+import { isAuthenticated } from '../middlewares/passport.middlewares';
 
 const uploadRouter = (prisma: PrismaClient): Router => {
   const router = Router();
