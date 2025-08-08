@@ -69,7 +69,7 @@ export default class CarService {
     };
   }
 
-  async getCarList(query: CarListQueryDto): Promise<CarListResponseDto> {
+  async getCarList(query: CarListQueryDto, companyId: number): Promise<CarListResponseDto> {
     const page = Number(query.page) ?? 1;
     const pageSize = Number(query.pageSize) ?? 8;
     const { status, searchBy, keyword } = query;
@@ -77,7 +77,9 @@ export default class CarService {
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
-    const whereClause: Prisma.CarWhereInput = {};
+    const whereClause: Prisma.CarWhereInput = {
+      companyId,
+    };
 
     const statusMap: Record<string, CarStatus> = {
       possession: CarStatus.POSSESSION,

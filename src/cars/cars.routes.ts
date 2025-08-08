@@ -3,11 +3,12 @@ import { PrismaClient } from '@prisma/client';
 import isAuthenticated from '../auth/auth';
 import validateDto from '../common/utils/validate.dto';
 import CarService from './service';
-import CarController, { upload } from './controller';
+import CarController from './controller';
 import { CreateCarDTO } from './dto/create-car.dto';
 import { CarListQueryDto } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import CarRepository from './repository';
+import csvUpload from '../middlewares/csv-upload.middleware';
 
 const CarsRouter = (prisma: PrismaClient): Router => {
   const router = Router();
@@ -23,7 +24,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
   router.patch('/:carId', validateDto(UpdateCarDto), carController.updateCar);
   router.delete('/:carId', carController.deleteCar);
   router.get('/:carId', carController.getCarDetails);
-  router.post('/upload', upload.single('file'), carController.uploadCars);
+  router.post('/upload', csvUpload.single('file'), carController.uploadCars);
 
   return router;
 };
