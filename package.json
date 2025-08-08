@@ -35,7 +35,8 @@
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.2",
     "strip-bom-stream": "^5.0.0",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",
@@ -52,6 +53,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "eslint": "^8.57.1",
