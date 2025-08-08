@@ -1,18 +1,17 @@
 import { v4 as uuid } from 'uuid';
 import admin from '../common/utils/firebase-admin';
 
-const bucket = admin.storage().bucket();
-
 export default class UploadRepository {
-  private bucket = admin.storage().bucket();
+  private readonly bucket = admin.storage().bucket();
 
   async uploadImageToFirebase(
     fileBuffer: Buffer,
     originalName: string,
     mimeType: string,
-  ): Promise<string> {
+    folder: string = 'images',
+  ): Promise<{ imageUrl: string; filename: string }> {
     const safeName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
-    const filename = `images/${Date.now()}-${safeName}`;
+    const filename = `${folder}/${Date.now()}-${safeName}`;
     const blob = this.bucket.file(filename);
     const token = uuid();
 
@@ -20,17 +19,18 @@ export default class UploadRepository {
       const blobStream = blob.createWriteStream({
         metadata: {
           contentType: mimeType,
-          metadata: {
-            firebaseStorageDownloadTokens: token,
-          },
+          metadata: { firebaseStorageDownloadTokens: token },
         },
       });
 
-      blobStream.on('error', reject);
+      blobStream.on('error', (err) => reject(err));
 
       blobStream.on('finish', () => {
-        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${this.bucket.name}/o/${encodeURIComponent(blob.name)}?alt=media&token=${token}`;
-        resolve(imageUrl);
+        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${this.bucket.name}/o/${encodeURIComponent(
+          blob.name,
+        )}?alt=media&token=${token}`;
+
+        resolve({ imageUrl, filename });
       });
 
       blobStream.end(fileBuffer);
