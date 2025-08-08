@@ -10,7 +10,7 @@
     "eslint:recommended"
   ],
   "parserOptions": {
-    "ecmaVersion": 6,
+    "ecmaVersion": 2021,
     "sourceType": "module"
   },
   "env": {
@@ -40,6 +40,15 @@
         "jsx": "never",
         "ts": "never",
         "tsx": "never"
+      }
+    ],
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": false,
+        "optionalDependencies": false,
+        "peerDependencies": false,
+        "packageDir": "./"
       }
     ],
     "lines-between-class-members": ["error", "always", { "exceptAfterSingleLine": true }],

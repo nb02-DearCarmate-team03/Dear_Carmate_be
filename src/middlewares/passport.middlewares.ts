@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { User } from '@prisma/client';
-import passport from './passport';
+import passport from '../auth/passport';
 
 export const isAuthenticated: RequestHandler = (
   req: Request,

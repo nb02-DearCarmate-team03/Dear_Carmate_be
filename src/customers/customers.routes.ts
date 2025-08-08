@@ -5,7 +5,7 @@ import { CustomerController } from './controller';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { isAuthenticated } from '../auth/auth';
+import { isAuthenticated } from '../middlewares/passport.middlewares';
 
 const storage = multer.memoryStorage();
 const upload = multer({

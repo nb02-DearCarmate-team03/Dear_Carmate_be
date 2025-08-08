@@ -6,7 +6,7 @@ import UserRepository from './repository';
 import validateDto from '../common/utils/validate.dto';
 import RegisterDto from './dto/create-user.dto';
 import UpdateUserDto from './dto/update-user.dto';
-import isAuthenticated from '../auth/auth';
+import isAuthenticated from '../middlewares/passport.middlewares';
 import { authorizeAdmin } from '../middlewares/auth.middleware';
 
 const userRouter = (prisma: PrismaClient): Router => {
