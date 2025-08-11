@@ -20,10 +20,22 @@ export class UploadCarDto {
   @Expose()
   @IsNotEmpty({ message: 'CSV: 차량 유형은 필수입니다.' })
   @IsString({ message: 'CSV: 차량 유형은 문자열이어야 합니다.' })
-  @IsIn(['경·소형', '준중·중형', '대형', '스포츠카', 'SUV'], {
-    message: 'CSV: 유효하지 않은 차량 유형입니다.',
-  })
-  type: '경·소형' | '준중·중형' | '대형' | '스포츠카' | 'SUV';
+  @IsIn(
+    ['경·소형', '준중·중형', '대형', '스포츠카', 'SUV', 'MIDSIZE', 'COMPACT', 'FULLSIZE', 'SPORTS'],
+    {
+      message: 'CSV: 유효하지 않은 차량 유형입니다.',
+    },
+  )
+  type:
+    | '경·소형'
+    | '준중·중형'
+    | '대형'
+    | '스포츠카'
+    | 'SUV'
+    | 'MIDSIZE'
+    | 'COMPACT'
+    | 'FULLSIZE'
+    | 'SPORTS';
 
   @Expose()
   @IsNotEmpty({ message: 'CSV: 연식은 필수입니다.' })
