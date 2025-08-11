@@ -32,9 +32,6 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
       return;
     }
 
-    console.log('🔐 헤더에서 추출한 토큰:', token);
-    console.log('🔥 JWT_ACCESS_TOKEN_SECRET:', JWT_ACCESS_TOKEN_SECRET);
-
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(token, JWT_ACCESS_TOKEN_SECRET) as JwtPayload;
