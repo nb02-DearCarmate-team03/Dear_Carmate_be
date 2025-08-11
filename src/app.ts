@@ -5,6 +5,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
+
 import errorHandler from './middlewares/error.middleware';
 import passport from './auth/passport';
 import swaggerOptions from '../swagger-options';
