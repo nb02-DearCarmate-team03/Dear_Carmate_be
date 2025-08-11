@@ -3,11 +3,12 @@ import { PrismaClient } from '@prisma/client';
 import isAuthenticated from '../middlewares/passport.middlewares';
 import validateDto from '../common/utils/validate.dto';
 import CarService from './service';
-import CarController, { upload } from './controller';
+import CarController from './controller';
 import { CreateCarDTO } from './dto/create-car.dto';
 import { CarListQueryDto } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import CarRepository from './repository';
+import csvUpload from '../middlewares/csv-upload.middleware';
 
 /**
  * @swagger
@@ -505,7 +506,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
    *         description: 인증이 필요합니다
    */
 
-  router.post('/upload', upload.single('file'), carController.uploadCars);
+  router.post('/upload', csvUpload.single('file'), carController.uploadCars);
 
   return router;
 };

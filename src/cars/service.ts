@@ -14,22 +14,9 @@ import { NotFoundError } from '../common/errors/not-found-error';
 import { ForbiddenError } from '../common/errors/forbidden-error';
 import { UnauthorizedError } from '../common/errors/unauthorized-error';
 import { AppError } from '../common/errors/app-error';
+import { carStatusToCamelCase, carTypeToKorean } from '../common/utils/car.converter';
 
 const BATCH_SIZE = 1000;
-
-const statusMapping = {
-  [CarStatus.POSSESSION]: 'possession',
-  [CarStatus.CONTRACT_PROCEEDING]: 'contractProceeding',
-  [CarStatus.CONTRACT_COMPLETED]: 'contractCompleted',
-};
-
-const typeMapping = {
-  [CarType.COMPACT]: '경·소형',
-  [CarType.MIDSIZE]: '준중·중형',
-  [CarType.FULLSIZE]: '대형',
-  [CarType.SPORTS]: '스포츠카',
-  [CarType.SUV]: 'SUV',
-};
 
 export interface CarModelOfManufacturer {
   manufacturer: string;
@@ -66,18 +53,18 @@ export default class CarService {
       carNumber: newCar.carNumber,
       manufacturer: newCar.manufacturer,
       model: newCar.model,
-      type: typeMapping[newCar.type] as CarType,
+      type: carTypeToKorean(newCar.type) as CarType,
       manufacturingYear: newCar.manufacturingYear,
       mileage: newCar.mileage,
       price: newCar.price.toNumber(),
       accidentCount: newCar.accidentCount,
       explanation: newCar.explanation,
       accidentDetails: newCar.accidentDetails,
-      status: statusMapping[newCar.status] as CarStatus,
+      status: carStatusToCamelCase(newCar.status) as CarStatus,
     };
   }
 
-  async getCarList(query: CarListQueryDto): Promise<CarListResponseDto> {
+  async getCarList(query: CarListQueryDto, companyId: number): Promise<CarListResponseDto> {
     const page = Number(query.page) ?? 1;
     const pageSize = Number(query.pageSize) ?? 8;
     const { status, searchBy, keyword } = query;
@@ -85,7 +72,9 @@ export default class CarService {
     const skip = (page - 1) * pageSize;
     const take = pageSize;
 
-    const whereClause: Prisma.CarWhereInput = {};
+    const whereClause: Prisma.CarWhereInput = {
+      companyId,
+    };
 
     const statusMap: Record<string, CarStatus> = {
       possession: CarStatus.POSSESSION,
@@ -126,14 +115,14 @@ export default class CarService {
       carNumber: car.carNumber,
       manufacturer: car.manufacturer,
       model: car.model,
-      type: typeMapping[car.type] as CarType,
+      type: carTypeToKorean(car.type) as CarType,
       manufacturingYear: car.manufacturingYear,
       mileage: car.mileage,
       price: car.price.toNumber(),
       accidentCount: car.accidentCount,
       explanation: car.explanation,
       accidentDetails: car.accidentDetails,
-      status: statusMapping[car.status] as CarStatus,
+      status: carStatusToCamelCase(car.status) as CarStatus,
     }));
     const totalPages = Math.ceil(totalItemCount / pageSize);
     return {
