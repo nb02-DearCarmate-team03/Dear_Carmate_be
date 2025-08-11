@@ -38,7 +38,7 @@ const userRouter = (prisma: PrismaClient): Router => {
    *               - phoneNumber
    *               - password
    *               - passwordConfirmation
-   *               - company
+   *               - companyName
    *               - companyCode
    *             properties:
    *               name:
@@ -62,7 +62,7 @@ const userRouter = (prisma: PrismaClient): Router => {
    *                 type: string
    *                 format: password
    *                 example: "password123"
-   *               company:
+   *               companyName:
    *                 type: string
    *                 example: "ABC Company"
    *               companyCode:
