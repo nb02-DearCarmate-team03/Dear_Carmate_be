@@ -1,19 +1,11 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import multer from 'multer';
 import { CustomerController } from './controller';
 import validateDto from '../common/utils/validate.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { isAuthenticated } from '../middlewares/passport.middlewares';
-
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
-});
+import csvUpload from '../middlewares/csv-upload.middleware';
 
 /**
  * @swagger
@@ -424,7 +416,7 @@ const createCustomerRoutes = (prisma: PrismaClient): Router => {
    */
 
   // 고객 대용량 업로드
-  router.post('/upload', upload.single('file'), customerController.uploadCustomers);
+  router.post('/upload', csvUpload.single('file'), customerController.uploadCustomers);
 
   return router;
 };
