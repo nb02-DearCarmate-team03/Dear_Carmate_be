@@ -16,69 +16,12 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { ConflictError } from '../common/errors/conflict-error';
 import { NotFoundError } from '../common/errors/not-found-error';
 import { BadRequestError } from '../common/errors/bad-request-error';
-
-// Enum을 한글로 변환하는 유틸리티 함수들
-class EnumConverter {
-  // Gender enum을 한글로 변환
-  static genderToKorean(gender: Gender | null): string | null {
-    if (!gender) return null;
-
-    // Prisma에서 실제로 반환하는 값은 @map으로 정의된 "male", "female"입니다
-    const genderMap: Record<string, string> = {
-      male: 'male',
-      female: 'female',
-      MALE: 'male', // 혹시 모를 대문자 케이스도 처리
-      FEMALE: 'female',
-    };
-
-    return genderMap[gender as string] || gender;
-  }
-
-  // AgeGroup enum을 한글로 변환
-  static ageGroupToKorean(ageGroup: AgeGroup | null): string | null {
-    if (!ageGroup) return null;
-
-    const ageGroupMap: Record<AgeGroup, string> = {
-      [AgeGroup.TEENAGER]: '10대',
-      [AgeGroup.TWENTIES]: '20대',
-      [AgeGroup.THIRTIES]: '30대',
-      [AgeGroup.FORTIES]: '40대',
-      [AgeGroup.FIFTIES]: '50대',
-      [AgeGroup.SIXTIES]: '60대',
-      [AgeGroup.SEVENTIES]: '70대',
-      [AgeGroup.EIGHTIES]: '80대',
-    };
-
-    return ageGroupMap[ageGroup] || ageGroup;
-  }
-
-  // Region enum을 한글로 변환
-  static regionToKorean(region: Region | null): string | null {
-    if (!region) return null;
-
-    const regionMap: Record<Region, string> = {
-      [Region.SEOUL]: '서울',
-      [Region.GYEONGGI]: '경기',
-      [Region.INCHEON]: '인천',
-      [Region.GANGWON]: '강원',
-      [Region.CHUNGBUK]: '충북',
-      [Region.CHUNGNAM]: '충남',
-      [Region.SEJONG]: '세종',
-      [Region.DAEJEON]: '대전',
-      [Region.JEONBUK]: '전북',
-      [Region.JEONNAM]: '전남',
-      [Region.GWANGJU]: '광주',
-      [Region.GYEONGBUK]: '경북',
-      [Region.GYEONGNAM]: '경남',
-      [Region.DAEGU]: '대구',
-      [Region.ULSAN]: '울산',
-      [Region.BUSAN]: '부산',
-      [Region.JEJU]: '제주',
-    };
-
-    return regionMap[region] || region;
-  }
-}
+// 분리된 converter 함수들을 import
+import {
+  genderToKorean,
+  ageGroupToKorean,
+  regionToKorean,
+} from '../common/utils/customer.converter';
 
 // 프론트엔드가 기대하는 응답 구조 (한글로 변환된 값들)
 export interface CustomerListResponse {
@@ -140,10 +83,10 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: EnumConverter.genderToKorean(customer.gender)!, // 한글로 변환
+      gender: genderToKorean(customer.gender)!, // 함수 직접 호출
       phoneNumber: customer.phoneNumber,
-      ageGroup: EnumConverter.ageGroupToKorean(customer.ageGroup), // 한글로 변환
-      region: EnumConverter.regionToKorean(customer.region), // 한글로 변환
+      ageGroup: ageGroupToKorean(customer.ageGroup), // 함수 직접 호출
+      region: regionToKorean(customer.region), // 함수 직접 호출
       email: customer.email!,
       memo: customer.memo,
       contractCount: customer.contractCount,
@@ -172,10 +115,10 @@ export class CustomerService {
       data: customers.map((customer) => ({
         id: customer.id,
         name: customer.name,
-        gender: EnumConverter.genderToKorean(customer.gender)!, // 한글로 변환
+        gender: genderToKorean(customer.gender)!, // 함수 직접 호출
         phoneNumber: customer.phoneNumber,
-        ageGroup: EnumConverter.ageGroupToKorean(customer.ageGroup), // 한글로 변환
-        region: EnumConverter.regionToKorean(customer.region), // 한글로 변환
+        ageGroup: ageGroupToKorean(customer.ageGroup), // 함수 직접 호출
+        region: regionToKorean(customer.region), // 함수 직접 호출
         email: customer.email!,
         memo: customer.memo,
         contractCount: customer.contractCount,
@@ -193,10 +136,10 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: EnumConverter.genderToKorean(customer.gender)!, // 한글로 변환
+      gender: genderToKorean(customer.gender)!, // 함수 직접 호출
       phoneNumber: customer.phoneNumber,
-      ageGroup: EnumConverter.ageGroupToKorean(customer.ageGroup), // 한글로 변환
-      region: EnumConverter.regionToKorean(customer.region), // 한글로 변환
+      ageGroup: ageGroupToKorean(customer.ageGroup), // 함수 직접 호출
+      region: regionToKorean(customer.region), // 함수 직접 호출
       email: customer.email!,
       memo: customer.memo,
       contractCount: customer.contractCount,
@@ -243,10 +186,10 @@ export class CustomerService {
     return {
       id: updatedCustomer.id,
       name: updatedCustomer.name,
-      gender: EnumConverter.genderToKorean(updatedCustomer.gender)!, // 한글로 변환
+      gender: genderToKorean(updatedCustomer.gender)!, // 함수 직접 호출
       phoneNumber: updatedCustomer.phoneNumber,
-      ageGroup: EnumConverter.ageGroupToKorean(updatedCustomer.ageGroup), // 한글로 변환
-      region: EnumConverter.regionToKorean(updatedCustomer.region), // 한글로 변환
+      ageGroup: ageGroupToKorean(updatedCustomer.ageGroup), // 함수 직접 호출
+      region: regionToKorean(updatedCustomer.region), // 함수 직접 호출
       email: updatedCustomer.email!,
       memo: updatedCustomer.memo,
       contractCount: updatedCustomer.contractCount,
