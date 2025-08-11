@@ -14,6 +14,7 @@
     "lint": "eslint . --ext .ts --fix"
   },
   "dependencies": {
+    "@nestjs/swagger": "^11.2.0",
     "@prisma/client": "^6.12.0",
     "archiver": "^7.0.1",
     "axios": "^1.11.0",
@@ -53,6 +54,8 @@
     "@types/passport": "^1.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",

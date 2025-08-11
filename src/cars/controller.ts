@@ -1,26 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthRequest } from 'src/middlewares/auth.middleware';
-import multer from 'multer';
 import { CreateCarDTO } from './dto/create-car.dto';
 import CarService, { CarModelListResponseDto } from './service';
 import { CarListQueryDto } from './dto/get-car.dto';
 import { UpdateCarDto } from './dto/update-car.dto';
 import { BadRequestError } from '../common/errors/bad-request-error';
 import { UnauthorizedError } from '../common/errors/unauthorized-error';
-
-const storage = multer.memoryStorage();
-
-export const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, //  // 10MB
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/csv') {
-      cb(null, true);
-    } else {
-      cb(new BadRequestError('CSV 파일만 업로드할 수 있습니다.'));
-    }
-  },
-});
 
 export default class CarController {
   private readonly carService: CarService;
@@ -48,11 +33,15 @@ export default class CarController {
   getCarList = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const query: CarListQueryDto = req.query as unknown as CarListQueryDto;
+      const companyId = req.user?.companyId;
 
-      const carList = await this.carService.getCarList(query);
-      res.status(200).json(carList);
+      if (!companyId) {
+        return res.status(401).json({ message: '인증되지 않은 사용자입니다.' });
+      }
+      const carList = await this.carService.getCarList(query, companyId);
+      return res.status(200).json(carList);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   };
 

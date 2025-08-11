@@ -100,7 +100,7 @@ export default class ContractDocumentsRepository {
             },
           },
         },
-        skip: Number(page),
+        skip: (page - 1) * pageSize,
         take: Number(pageSize),
         orderBy: {
           createdAt: 'desc',
