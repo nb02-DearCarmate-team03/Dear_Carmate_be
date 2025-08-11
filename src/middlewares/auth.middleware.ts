@@ -32,6 +32,9 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
       return;
     }
 
+    console.log('🔐 헤더에서 추출한 토큰:', token);
+    console.log('🔥 JWT_ACCESS_TOKEN_SECRET:', JWT_ACCESS_TOKEN_SECRET);
+
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(token, JWT_ACCESS_TOKEN_SECRET) as JwtPayload;
@@ -46,9 +49,11 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
       return;
     }
 
-    const { id, email, name, isAdmin, companyId } = decoded as User;
-    if (id && email && name) {
-      req.user = { id, email, name, isAdmin, companyId };
+    const { email, isAdmin } = decoded;
+    const id = decoded.sub;
+
+    if (id && email) {
+      req.user = { id: Number(id), email, name: '', isAdmin, companyId: 0 };
       next();
     } else {
       res.status(401).json({ message: '유효하지 않은 토큰입니다.' });

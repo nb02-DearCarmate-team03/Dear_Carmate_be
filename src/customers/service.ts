@@ -209,7 +209,7 @@ export class CustomerService {
         companyId,
         userId,
         fileName: file.originalname,
-        fileUrl: '', // fileUrl은 필수 필드인데 빠져있음. 적절한 값 설정 필요
+        fileUrl: 'https://placeholder.url/file.pdf', // fileUrl은 필수 필드인데 빠져있음. 적절한 값 설정 필요
         fileType: UploadType.CUSTOMER, // enum 사용
         status: UploadStatus.PROCESSING, // enum 사용
       },
