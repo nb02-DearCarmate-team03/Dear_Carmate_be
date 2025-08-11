@@ -6,5 +6,6 @@ export class UpdateMeetingDto {
 
   @IsOptional()
   @IsArray()
+  @IsDateString({}, { each: true })
   alarms?: string[];
 }

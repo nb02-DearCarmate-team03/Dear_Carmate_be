@@ -1,128 +1,154 @@
 import { Request, Response, NextFunction } from 'express';
-import { ContractService, RequestUser } from './service';
-
+import { ContractService } from './service';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
+import { mapContract } from './contract.mapper';
+import { ContractSearchBy } from './repository';
 
-import { UnauthorizedError } from '../common/errors/unauthorized-error';
-import { BadRequestError } from '../common/errors/bad-request-error';
+// 요청 사용자 타입
+interface RequestUser {
+  id: number;
+  companyId: number;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+}
 
 export default class ContractController {
   private readonly contractService: ContractService;
-
   constructor(contractService: ContractService) {
     this.contractService = contractService;
   }
 
-  // POST /contracts - 계약 등록
-  createContract = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-
-      const authUser = user as RequestUser;
-      const dto = req.body as CreateContractDto;
-
-      const created = await this.contractService.createContract(authUser, dto);
-      res.status(201).json(created);
-    } catch (err) {
-      next(err);
-    }
-  };
-
-  // GET /contracts - 계약 목록 조회
+  // 계약 목록 조회
   getContracts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-
-      const authUser = user as RequestUser;
-      const { searchBy, keyword } = req.query as {
-        searchBy?: 'customerName' | 'userName';
+      const user = req.user as RequestUser;
+      const { searchBy, keyword, page, pageSize, grouped } = req.query as {
+        searchBy?: ContractSearchBy;
         keyword?: string;
+        page?: string;
+        pageSize?: string;
+        grouped?: string;
       };
 
-      const list = await this.contractService.getContracts(authUser, { searchBy, keyword });
-      res.status(200).json(list);
-    } catch (err) {
-      next(err);
+      const pageNum = page ? Number(page) : undefined;
+      const sizeNum = pageSize ? Number(pageSize) : undefined;
+
+      if (grouped === 'true') {
+        const result = await this.contractService.getContractsGroupedPage(user, {
+          searchBy,
+          keyword,
+          page: pageNum,
+          pageSize: sizeNum,
+        });
+        res.status(200).json(result.data);
+        return;
+      }
+
+      const result = await this.contractService.getContractsPage(user, {
+        searchBy,
+        keyword,
+        page: pageNum,
+        pageSize: sizeNum,
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
     }
   };
 
-  // PATCH /contracts/:contractId - 계약 수정
+  // 계약 단건 조회
+  getContract = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const contractId = Number(req.params.contractId);
+      const row = await this.contractService.getContractById(contractId);
+
+      if (!row) {
+        res.status(404).json({ message: '존재하지 않는 계약입니다.' });
+        return;
+      }
+
+      res.status(200).json(mapContract(row));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 계약 등록
+  createContract = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = req.user as RequestUser;
+      const body = req.body as CreateContractDto & {
+        userId: number;
+        customerId: number;
+        carId: number;
+      };
+
+      const created = await this.contractService.createContract(user, body);
+      res.status(201).json(mapContract(created));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 계약 수정
   updateContract = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-
-      const authUser = user as RequestUser;
+      const user = req.user as RequestUser;
       const contractId = Number(req.params.contractId);
-      if (Number.isNaN(contractId)) throw new BadRequestError('잘못된 요청입니다.');
-
       const dto = req.body as UpdateContractDto;
-      const updated = await this.contractService.updateContract(authUser, contractId, dto);
-      res.status(200).json(updated);
-    } catch (err) {
-      next(err);
+
+      const updated = await this.contractService.updateContract(user, contractId, dto);
+      res.status(200).json(mapContract(updated));
+    } catch (error) {
+      next(error);
     }
   };
 
-  // DELETE /contracts/:contractId - 계약 삭제
+  // 계약 삭제
   deleteContract = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-
-      const authUser = user as RequestUser;
+      const user = req.user as RequestUser;
       const contractId = Number(req.params.contractId);
-      if (Number.isNaN(contractId)) throw new BadRequestError('잘못된 요청입니다.');
 
-      await this.contractService.deleteContract(authUser, contractId);
-      res.status(200).json({ message: '계약 삭제 성공' });
-    } catch (err) {
-      next(err);
+      await this.contractService.deleteContract(user, contractId);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
     }
   };
 
-  // 선택 리스트: 차량
+  // 계약용 차량 선택 목록
   getContractCars = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-      const authUser = user as RequestUser;
-
-      const data = await this.contractService.getContractCars(authUser);
-      res.status(200).json(data);
-    } catch (err) {
-      next(err);
+      const user = req.user as RequestUser;
+      const rows = await this.contractService.getContractCars(user);
+      res.status(200).json(rows);
+    } catch (error) {
+      next(error);
     }
   };
 
-  // 선택 리스트: 고객
+  // 계약용 고객 선택 목록
   getContractCustomers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-      const authUser = user as RequestUser;
-
-      const data = await this.contractService.getContractCustomers(authUser);
-      res.status(200).json(data);
-    } catch (err) {
-      next(err);
+      const user = req.user as RequestUser;
+      const rows = await this.contractService.getContractCustomers(user);
+      res.status(200).json(rows);
+    } catch (error) {
+      next(error);
     }
   };
 
-  // 선택 리스트: 담당자
+  // 계약용 사용자 선택 목록
   getContractUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user } = req;
-      if (!user) throw new UnauthorizedError('로그인이 필요합니다.');
-      const authUser = user as RequestUser;
-
-      const data = await this.contractService.getContractUsers(authUser);
-      res.status(200).json(data);
-    } catch (err) {
-      next(err);
+      const user = req.user as RequestUser;
+      const rows = await this.contractService.getContractUsers(user);
+      res.status(200).json(rows);
+    } catch (error) {
+      next(error);
     }
   };
 }

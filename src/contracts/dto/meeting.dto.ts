@@ -1,10 +1,11 @@
-import { IsArray, IsDateString, IsString } from 'class-validator';
+import { IsArray, IsDateString, IsOptional } from 'class-validator';
 
 export class MeetingDto {
   @IsDateString()
-  date: string;
+  date!: string;
 
+  @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  alarms: string[];
+  @IsDateString({}, { each: true })
+  alarms?: string[];
 }

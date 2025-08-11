@@ -1,4 +1,3 @@
-// src/contracts/contracts.routes.ts
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 
@@ -23,19 +22,19 @@ const ContractsRouter = (prisma: PrismaClient): Router => {
   // 모든 계약 API는 인증 필요
   contractRouter.use(isAuthenticated);
 
-  // POST /contracts - 계약 등록
+  /** POST /contracts - 계약 등록 */
   contractRouter.post('/', validateDto(CreateContractDto), controller.createContract);
 
-  // GET /contracts - 계약 목록 조회 (검색: 고객명/담당자명)
+  /** GET /contracts - 계약 목록 조회 (검색: 고객명/담당자명) */
   contractRouter.get('/', controller.getContracts);
 
-  // PATCH /contracts/:contractId - 계약 수정
+  /** PATCH /contracts/:contractId - 계약 수정 */
   contractRouter.patch('/:contractId', validateDto(UpdateContractDto), controller.updateContract);
 
-  // DELETE /contracts/:contractId - 계약 삭제
+  /** DELETE /contracts/:contractId - 계약 삭제 */
   contractRouter.delete('/:contractId', controller.deleteContract);
 
-  // 계약 작성용 드롭다운 데이터
+  /** 계약 작성용 드롭다운 데이터 */
   contractRouter.get('/cars', controller.getContractCars);
   contractRouter.get('/customers', controller.getContractCustomers);
   contractRouter.get('/users', controller.getContractUsers);

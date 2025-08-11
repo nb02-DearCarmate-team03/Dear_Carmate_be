@@ -24,10 +24,6 @@ export class CreateContractDto {
   contractPrice?: number;
 
   @IsOptional()
-  @IsInt()
-  userId?: number;
-
-  @IsOptional()
   @IsEnum(ContractStatus)
   status?: ContractStatus;
 

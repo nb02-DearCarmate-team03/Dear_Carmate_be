@@ -1,71 +1,211 @@
-import type { User as PrismaUser } from '@prisma/client';
-
-import ContractRepository from './repository';
+import { PrismaClient, ContractStatus as PrismaContractStatus } from '@prisma/client';
+import ContractRepository, { ContractSearchBy, ContractWithRelations } from './repository';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
+import { mapContract } from './contract.mapper';
 
-import { ForbiddenError } from '../common/errors/forbidden-error';
-import { NotFoundError } from '../common/errors/not-found-error';
+type RequestUser = {
+  id: number;
+  companyId: number;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+};
 
-export type RequestUser = Pick<PrismaUser, 'id' | 'companyId' | 'name' | 'email' | 'isAdmin'>;
-
-export type GetContractsFilters = {
-  searchBy?: 'customerName' | 'userName';
-  keyword?: string;
+// 상태 → 응답 키
+const STATUS_KEY: Record<
+  PrismaContractStatus,
+  'carInspection' | 'priceNegotiation' | 'contractDraft' | 'contractSuccessful' | 'contractFailed'
+> = {
+  CAR_INSPECTION: 'carInspection',
+  PRICE_NEGOTIATION: 'priceNegotiation',
+  CONTRACT_DRAFT: 'contractDraft',
+  CONTRACT_SUCCESSFUL: 'contractSuccessful',
+  CONTRACT_FAILED: 'contractFailed',
 };
 
 export class ContractService {
-  private readonly contractRepository: ContractRepository;
+  private readonly repository: ContractRepository;
 
-  constructor(contractRepository: ContractRepository) {
-    this.contractRepository = contractRepository;
+  constructor(prismaOrRepository: PrismaClient | ContractRepository) {
+    this.repository =
+      prismaOrRepository instanceof ContractRepository
+        ? prismaOrRepository
+        : new ContractRepository(prismaOrRepository);
+  }
+
+  // 계약 목록 조회(단순)
+  async getContracts(
+    user: RequestUser,
+    filters: { searchBy?: ContractSearchBy; keyword?: string },
+  ): Promise<ReturnType<typeof mapContract>[]> {
+    const rows = await this.repository.findContracts({
+      companyId: user.companyId,
+      searchBy: filters.searchBy,
+      keyword: filters.keyword ?? '',
+    });
+    return rows.map(mapContract);
+  }
+
+  // 계약 목록 조회(페이지네이션, 단순 리스트)
+  async getContractsPage(
+    user: RequestUser,
+    params: { searchBy?: ContractSearchBy; keyword?: string; page?: number; pageSize?: number },
+  ): Promise<{
+    currentPage: number;
+    totalPages: number;
+    totalItemCount: number;
+    data: ReturnType<typeof mapContract>[];
+  }> {
+    const page = Math.max(1, params.page ?? 1);
+    const pageSize = Math.min(Math.max(1, params.pageSize ?? 10), 100);
+    const skip = (page - 1) * pageSize;
+
+    const [rows, total] = await Promise.all([
+      this.repository.findContracts({
+        companyId: user.companyId,
+        searchBy: params.searchBy,
+        keyword: params.keyword ?? '',
+        skip,
+        take: pageSize,
+      }),
+      this.repository.countContracts({
+        companyId: user.companyId,
+        searchBy: params.searchBy,
+        keyword: params.keyword ?? '',
+      }),
+    ]);
+
+    return {
+      currentPage: page,
+      totalPages: Math.ceil(total / pageSize),
+      totalItemCount: total,
+      data: rows.map(mapContract),
+    };
+  }
+
+  // 계약 목록 조회(상태별 그룹 + 페이지네이션 요약)
+  async getContractsGroupedPage(
+    user: RequestUser,
+    params: { searchBy?: ContractSearchBy; keyword?: string; page?: number; pageSize?: number },
+  ): Promise<{
+    currentPage: number;
+    totalPages: number;
+    totalItemCount: number;
+    data: {
+      carInspection: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      priceNegotiation: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      contractDraft: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      contractSuccessful: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      contractFailed: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+    };
+  }> {
+    const page = Math.max(1, params.page ?? 1);
+    const pageSize = Math.min(Math.max(1, params.pageSize ?? 10), 100);
+    const skip = (page - 1) * pageSize;
+
+    const statuses: PrismaContractStatus[] = [
+      'CAR_INSPECTION',
+      'PRICE_NEGOTIATION',
+      'CONTRACT_DRAFT',
+      'CONTRACT_SUCCESSFUL',
+      'CONTRACT_FAILED',
+    ];
+
+    const totalPromise = this.repository.countContracts({
+      companyId: user.companyId,
+      searchBy: params.searchBy,
+      keyword: params.keyword ?? '',
+    });
+
+    const perStatusPromises = statuses.flatMap((status) => [
+      this.repository.countContracts({
+        companyId: user.companyId,
+        searchBy: params.searchBy,
+        keyword: params.keyword ?? '',
+        status,
+      }),
+      this.repository.findContracts({
+        companyId: user.companyId,
+        searchBy: params.searchBy,
+        keyword: params.keyword ?? '',
+        status,
+        skip,
+        take: pageSize,
+      }),
+    ]);
+
+    const [total, ...rest] = await Promise.all([totalPromise, ...perStatusPromises]);
+
+    const grouped: {
+      carInspection: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      priceNegotiation: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      contractDraft: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      contractSuccessful: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+      contractFailed: { totalItemCount: number; data: ReturnType<typeof mapContract>[] };
+    } = {
+      carInspection: { totalItemCount: 0, data: [] },
+      priceNegotiation: { totalItemCount: 0, data: [] },
+      contractDraft: { totalItemCount: 0, data: [] },
+      contractSuccessful: { totalItemCount: 0, data: [] },
+      contractFailed: { totalItemCount: 0, data: [] },
+    };
+
+    statuses.forEach((status, index) => {
+      const count = rest[index * 2] as number;
+      const rows = rest[index * 2 + 1] as ContractWithRelations[];
+      const key = STATUS_KEY[status];
+      grouped[key] = { totalItemCount: count, data: rows.map(mapContract) };
+    });
+
+    return {
+      currentPage: page,
+      totalPages: Math.ceil(total / pageSize),
+      totalItemCount: total,
+      data: grouped,
+    };
+  }
+
+  // 계약 단건 조회
+  async getContractById(contractId: number) {
+    return this.repository.findContractById(contractId);
   }
 
   // 계약 등록
-  async createContract(user: RequestUser, dto: CreateContractDto) {
-    return this.contractRepository.create({
+  async createContract(
+    user: RequestUser,
+    dto: CreateContractDto & { customerId: number; carId: number; userId: number },
+  ) {
+    const userId = dto.userId ?? user.id;
+    return this.repository.createContract({
       ...dto,
-      userId: user.id,
-      companyId: user.companyId,
-    });
-  }
-
-  // 계약 목록 조회
-  async getContracts(user: RequestUser, filters: GetContractsFilters) {
-    return this.contractRepository.findAll({
-      ...filters,
+      userId,
       companyId: user.companyId,
     });
   }
 
   // 계약 수정
-  async updateContract(user: RequestUser, contractId: number, dto: UpdateContractDto) {
-    const contract = await this.contractRepository.findById(contractId);
-    if (!contract) throw new NotFoundError('존재하지 않는 계약입니다.');
-    if (contract.companyId !== user.companyId)
-      throw new ForbiddenError('담당자만 수정이 가능합니다.');
-    return this.contractRepository.update(contractId, dto);
+  async updateContract(_user: RequestUser, contractId: number, updateData: UpdateContractDto) {
+    return this.repository.updateContract(contractId, updateData);
   }
 
   // 계약 삭제
-  async deleteContract(user: RequestUser, contractId: number) {
-    const contract = await this.contractRepository.findById(contractId);
-    if (!contract) throw new NotFoundError('존재하지 않는 계약입니다.');
-    if (contract.companyId !== user.companyId)
-      throw new ForbiddenError('담당자만 삭제가 가능합니다.');
-    await this.contractRepository.delete(contractId);
+  async deleteContract(_user: RequestUser, contractId: number) {
+    await this.repository.deleteContract(contractId);
   }
 
-  // 계약용 선택 리스트
+  // 계약용 차량 선택 목록
   async getContractCars(user: RequestUser) {
-    return this.contractRepository.findCarsByCompanyId(user.companyId);
+    return this.repository.findCarsByCompanyId(user.companyId);
   }
 
+  // 계약용 고객 선택 목록
   async getContractCustomers(user: RequestUser) {
-    return this.contractRepository.findCustomersByCompanyId(user.companyId);
+    return this.repository.findCustomersByCompanyId(user.companyId);
   }
 
+  // 계약용 사용자 선택 목록
   async getContractUsers(user: RequestUser) {
-    return this.contractRepository.findUsersByCompanyId(user.companyId);
+    return this.repository.findUsersByCompanyId(user.companyId);
   }
 }
