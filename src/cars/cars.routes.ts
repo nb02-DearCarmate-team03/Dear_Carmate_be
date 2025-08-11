@@ -303,17 +303,69 @@ const CarsRouter = (prisma: PrismaClient): Router => {
    *                 type: string
    *               accidentDetails:
    *                 type: string
+   *               status:
+   *                 type: string
+   *                 description: 차량 상태
    *     responses:
    *       200:
    *         description: 차량 정보 수정 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: integer
+   *                 carNumber:
+   *                   type: string
+   *                 manufacturer:
+   *                   type: string
+   *                 model:
+   *                   type: string
+   *                 manufacturingYear:
+   *                   type: integer
+   *                 mileage:
+   *                   type: integer
+   *                 price:
+   *                   type: number
+   *                 accidentCount:
+   *                   type: integer
+   *                 explanation:
+   *                   type: string
+   *                 accidentDetails:
+   *                   type: string
+   *                 status:
+   *                   type: string
    *       400:
    *         description: 잘못된 요청
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "잘못된 요청입니다"
    *       401:
    *         description: 인증이 필요합니다
-   *       403:
-   *         description: 권한이 없습니다
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "인증이 필요합니다"
    *       404:
    *         description: 차량을 찾을 수 없습니다
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "차량을 찾을 수 없습니다"
    */
 
   router.patch('/:carId', validateDto(UpdateCarDto), carController.updateCar);
