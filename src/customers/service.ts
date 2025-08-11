@@ -1,5 +1,13 @@
 /* eslint-disable */
-import { PrismaClient, Prisma, UploadType, UploadStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  UploadType,
+  UploadStatus,
+  Gender,
+  AgeGroup,
+  Region,
+} from '@prisma/client';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { CustomerRepository } from './repository';
@@ -8,12 +16,19 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { ConflictError } from '../common/errors/conflict-error';
 import { NotFoundError } from '../common/errors/not-found-error';
 import { BadRequestError } from '../common/errors/bad-request-error';
+// 분리된 converter 함수들을 import
+import {
+  genderToKorean,
+  ageGroupToKorean,
+  regionToKorean,
+} from '../common/utils/customer.converter';
 
+// 프론트엔드가 기대하는 응답 구조 (한글로 변환된 값들)
 export interface CustomerListResponse {
   currentPage: number;
   totalPages: number;
   totalItemCount: number;
-  customers: Array<{
+  data: Array<{
     id: number;
     name: string;
     gender: string;
@@ -68,11 +83,11 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: customer.gender!, // DB에서는 nullable이지만 생성 시에는 필수
+      gender: genderToKorean(customer.gender)!, // 함수 직접 호출
       phoneNumber: customer.phoneNumber,
-      ageGroup: customer.ageGroup,
-      region: customer.region,
-      email: customer.email!, // DB에서는 nullable이지만 생성 시에는 필수
+      ageGroup: ageGroupToKorean(customer.ageGroup), // 함수 직접 호출
+      region: regionToKorean(customer.region), // 함수 직접 호출
+      email: customer.email!,
       memo: customer.memo,
       contractCount: customer.contractCount,
     };
@@ -97,14 +112,14 @@ export class CustomerService {
       currentPage: page,
       totalPages: Math.ceil(total / pageSize),
       totalItemCount: total,
-      customers: customers.map((customer) => ({
+      data: customers.map((customer) => ({
         id: customer.id,
         name: customer.name,
-        gender: customer.gender!, // 기존 데이터는 null일 수 있지만 새 데이터는 필수
+        gender: genderToKorean(customer.gender)!, // 함수 직접 호출
         phoneNumber: customer.phoneNumber,
-        ageGroup: customer.ageGroup,
-        region: customer.region,
-        email: customer.email!, // 기존 데이터는 null일 수 있지만 새 데이터는 필수
+        ageGroup: ageGroupToKorean(customer.ageGroup), // 함수 직접 호출
+        region: regionToKorean(customer.region), // 함수 직접 호출
+        email: customer.email!,
         memo: customer.memo,
         contractCount: customer.contractCount,
       })),
@@ -121,11 +136,11 @@ export class CustomerService {
     return {
       id: customer.id,
       name: customer.name,
-      gender: customer.gender!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      gender: genderToKorean(customer.gender)!, // 함수 직접 호출
       phoneNumber: customer.phoneNumber,
-      ageGroup: customer.ageGroup,
-      region: customer.region,
-      email: customer.email!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      ageGroup: ageGroupToKorean(customer.ageGroup), // 함수 직접 호출
+      region: regionToKorean(customer.region), // 함수 직접 호출
+      email: customer.email!,
       memo: customer.memo,
       contractCount: customer.contractCount,
     };
@@ -171,11 +186,11 @@ export class CustomerService {
     return {
       id: updatedCustomer.id,
       name: updatedCustomer.name,
-      gender: updatedCustomer.gender!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      gender: genderToKorean(updatedCustomer.gender)!, // 함수 직접 호출
       phoneNumber: updatedCustomer.phoneNumber,
-      ageGroup: updatedCustomer.ageGroup,
-      region: updatedCustomer.region,
-      email: updatedCustomer.email!, // 기존 데이터는 null일 수 있지만 응답에서는 필수
+      ageGroup: ageGroupToKorean(updatedCustomer.ageGroup), // 함수 직접 호출
+      region: regionToKorean(updatedCustomer.region), // 함수 직접 호출
+      email: updatedCustomer.email!,
       memo: updatedCustomer.memo,
       contractCount: updatedCustomer.contractCount,
     };
