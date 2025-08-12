@@ -23,7 +23,6 @@ export type ContractResponse = {
     | 'contractDraft'
     | 'contractSuccessful'
     | 'contractFailed';
-  // 👇 optional 로 두면 프론트 미사용 시에도 안전
   contractDocuments: { id: number; fileName: string }[];
 };
 
@@ -109,13 +108,14 @@ function mapMeeting(m: RawMeeting): { date: string; alarms: string[] } {
  * - undefined 반환한 키는 JSON 직렬화 시 빠짐
  */
 export function mapContract(row: RawContract): ContractResponse {
+  const price = row.contractPrice == null ? 0 : decimalToNumber(row.contractPrice);
   const response: ContractResponse = {
     id: row.id,
     car: row.car ? { id: row.car.id, model: row.car.model } : undefined,
     customer: row.customer ? { id: row.customer.id, name: row.customer.name } : undefined,
     user: row.user ? { id: row.user.id, name: row.user.name } : undefined,
     meetings: (row.meetings ?? []).map(mapMeeting),
-    contractPrice: decimalToNumber(row.contractPrice),
+    contractPrice: price,
     resolutionDate: toLocalDateTime(row.resolutionDate ?? null),
     status: toCamelStatus(String(row.status)),
     contractDocuments: (row.contractDocuments ?? []).map((d: { id: number; fileName: string }) => ({

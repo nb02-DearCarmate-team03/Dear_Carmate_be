@@ -22,14 +22,14 @@ function validateDto<T extends object>(DtoClass: new () => T) {
       whitelist: true, // DTO에 정의되지 않은 속성 제거
       forbidNonWhitelisted: false, // 정의되지 않은 속성이 있어도 에러 발생하지 않음
       skipMissingProperties: false, // 필수 속성 검사
+      stopAtFirstError: false,
     });
 
     if (errors.length > 0) {
       const messages = errors.map((err) => {
-        const constraints = err.constraints || {};
         return {
           property: err.property,
-          errors: Object.values(constraints),
+          errors: Object.values(err.constraints ?? {}),
         };
       });
 
