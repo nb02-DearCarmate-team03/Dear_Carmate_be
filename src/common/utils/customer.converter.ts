@@ -7,15 +7,15 @@ import { Gender, AgeGroup, Region } from '@prisma/client';
 export function genderToKorean(gender: Gender | null): string | null {
   if (!gender) return null;
 
-  // Prisma에서 실제로 반환하는 값은 @map으로 정의된 "male", "female"입니다
+  // Prisma enum을 한글로 변환
   const genderMap: Record<string, string> = {
-    male: 'male',
-    female: 'female',
-    MALE: 'male', // 혹시 모를 대문자 케이스도 처리
-    FEMALE: 'female',
+    MALE: '남성', // ✅ 수정
+    FEMALE: '여성', // ✅ 수정
+    male: '남성', // 혹시 모를 소문자 케이스
+    female: '여성',
   };
 
-  return genderMap[gender as string] || gender;
+  return genderMap[gender as string] || '남성'; // 기본값 설정
 }
 
 /**
@@ -24,18 +24,18 @@ export function genderToKorean(gender: Gender | null): string | null {
 export function ageGroupToKorean(ageGroup: AgeGroup | null): string | null {
   if (!ageGroup) return null;
 
-  const ageGroupMap: Record<AgeGroup, string> = {
-    [AgeGroup.TEENAGER]: '10대',
-    [AgeGroup.TWENTIES]: '20대',
-    [AgeGroup.THIRTIES]: '30대',
-    [AgeGroup.FORTIES]: '40대',
-    [AgeGroup.FIFTIES]: '50대',
-    [AgeGroup.SIXTIES]: '60대',
-    [AgeGroup.SEVENTIES]: '70대',
-    [AgeGroup.EIGHTIES]: '80대',
+  const ageGroupMap: Record<string, string> = {
+    TEENAGER: '10대',
+    TWENTIES: '20대',
+    THIRTIES: '30대',
+    FORTIES: '40대',
+    FIFTIES: '50대',
+    SIXTIES: '60대',
+    SEVENTIES: '70대',
+    EIGHTIES: '80대',
   };
 
-  return ageGroupMap[ageGroup] || ageGroup;
+  return ageGroupMap[ageGroup as string] || null;
 }
 
 /**
@@ -44,27 +44,27 @@ export function ageGroupToKorean(ageGroup: AgeGroup | null): string | null {
 export function regionToKorean(region: Region | null): string | null {
   if (!region) return null;
 
-  const regionMap: Record<Region, string> = {
-    [Region.SEOUL]: '서울',
-    [Region.GYEONGGI]: '경기',
-    [Region.INCHEON]: '인천',
-    [Region.GANGWON]: '강원',
-    [Region.CHUNGBUK]: '충북',
-    [Region.CHUNGNAM]: '충남',
-    [Region.SEJONG]: '세종',
-    [Region.DAEJEON]: '대전',
-    [Region.JEONBUK]: '전북',
-    [Region.JEONNAM]: '전남',
-    [Region.GWANGJU]: '광주',
-    [Region.GYEONGBUK]: '경북',
-    [Region.GYEONGNAM]: '경남',
-    [Region.DAEGU]: '대구',
-    [Region.ULSAN]: '울산',
-    [Region.BUSAN]: '부산',
-    [Region.JEJU]: '제주',
+  const regionMap: Record<string, string> = {
+    SEOUL: '서울',
+    GYEONGGI: '경기',
+    INCHEON: '인천',
+    GANGWON: '강원',
+    CHUNGBUK: '충북',
+    CHUNGNAM: '충남',
+    SEJONG: '세종',
+    DAEJEON: '대전',
+    JEONBUK: '전북',
+    JEONNAM: '전남',
+    GWANGJU: '광주',
+    GYEONGBUK: '경북',
+    GYEONGNAM: '경남',
+    DAEGU: '대구',
+    ULSAN: '울산',
+    BUSAN: '부산',
+    JEJU: '제주',
   };
 
-  return regionMap[region] || region;
+  return regionMap[region as string] || null;
 }
 
 /**
