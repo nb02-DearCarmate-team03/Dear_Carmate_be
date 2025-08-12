@@ -96,20 +96,20 @@ const ContractsRouter = (prisma: PrismaClient): Router => {
    * type: object
    * properties:
    * id:
-   * type: string
+   * type: integer
    * name:
    * type: string
    * model:
    * type: string
    * example:
-   * id: "1"
+   * id: 1
    * name: "아반떼"
    * model: "KS"
    * customer:
    * type: object
    * properties:
    * id:
-   * type: string
+   * type: integer
    * name:
    * type: string
    * example:
@@ -119,7 +119,7 @@ const ContractsRouter = (prisma: PrismaClient): Router => {
    * type: object
    * properties:
    * id:
-   * type: string
+   * type: integer
    * name:
    * type: string
    * example:
