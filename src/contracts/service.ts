@@ -3,6 +3,9 @@ import ContractRepository, { ContractSearchBy, ContractWithRelations } from './r
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { mapContract } from './contract.mapper';
+// 계약서 관리를 위한 import 추가
+import ContractDocumentsService from '../contract-documents/service';
+import ContractDocumentsRepository from '../contract-documents/repository';
 
 type RequestUser = {
   id: number;
@@ -26,12 +29,19 @@ const STATUS_KEY: Record<
 
 export class ContractService {
   private readonly repository: ContractRepository;
-
+  private readonly contractDocumentsService: ContractDocumentsService; //  계약서 서비스 추가
   constructor(prismaOrRepository: PrismaClient | ContractRepository) {
     this.repository =
       prismaOrRepository instanceof ContractRepository
         ? prismaOrRepository
         : new ContractRepository(prismaOrRepository);
+    //  계약서 서비스 초기화
+    const prisma =
+      prismaOrRepository instanceof ContractRepository
+        ? (prismaOrRepository as any).prisma
+        : prismaOrRepository;
+    const contractDocumentsRepo = new ContractDocumentsRepository(prisma);
+    this.contractDocumentsService = new ContractDocumentsService(contractDocumentsRepo);
   }
 
   // 계약 목록 조회(단순)
@@ -184,9 +194,37 @@ export class ContractService {
     });
   }
 
-  // 계약 수정
+  // 계약 수정 - 계약서 관리 통합
   async updateContract(_user: RequestUser, contractId: number, updateData: UpdateContractDto) {
-    return this.repository.updateContract(contractId, updateData);
+    // 1. 기존 계약 수정 로직 먼저 실행
+    const updated = await this.repository.updateContract(contractId, updateData);
+
+    // 2. 계약서 처리 (UpdateContractDto의 contractDocuments 필드 사용)
+    if (updateData.contractDocuments && updateData.contractDocuments.length > 0) {
+      const documentIds = updateData.contractDocuments.map((doc) => doc.id);
+
+      // 계약서들을 이 계약에 연결
+      await this.contractDocumentsService.attachDocumentsToContract(
+        _user.companyId,
+        contractId,
+        documentIds,
+      );
+
+      // 파일명 업데이트 (필요한 경우)
+      const fileNameUpdates = updateData.contractDocuments
+        .filter((doc) => doc.fileName)
+        .map((doc) => ({ id: doc.id, fileName: doc.fileName! }));
+
+      if (fileNameUpdates.length > 0) {
+        await this.contractDocumentsService.updateContractDocumentFileNames(
+          _user.companyId,
+          contractId,
+          fileNameUpdates,
+        );
+      }
+    }
+
+    return updated;
   }
 
   // 계약 삭제

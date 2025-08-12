@@ -9,7 +9,6 @@ import ContractDocumentsRepository from './repository';
 import GetContractDocumentsDto from './dto/get-contract-documents.dto';
 import UploadContractDocumentDto from './dto/upload-contract-document.dto';
 import DownloadContractDocumentsDto from './dto/download-contract-documents.dto';
-import EditContractDocumentsDto from './dto/edit-contract-documents.dto';
 
 const createContractDocumentsRouter = (prisma: PrismaClient) => {
   const router = Router();
@@ -163,7 +162,66 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
    *       401:
    *         description: 인증이 필요합니다
    */
+  // 계약서 추가용 계약 목록 조회
+  router.get('/draft', isAuthenticated, contractDocumentsController.getContractsForDraft);
 
+  /**
+   * @swagger
+   * /contractDocuments/upload:
+   *   post:
+   *     tags:
+   *       - ContractDocuments
+   *     summary: 계약서 업로드
+   *     description: 계약서 파일 업로드 (최대 10개, 각 파일 최대 10MB)
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - contractId
+   *               - files
+   *             properties:
+   *               contractId:
+   *                 type: integer
+   *                 description: 계약 ID
+   *                 example: 1
+   *               files:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                   format: binary
+   *                 maxItems: 10
+   *                 description: 업로드할 파일들 (최대 10개, 각 10MB)
+   *     responses:
+   *       200:
+   *         description: 계약서 업로드 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "계약서 업로드 성공"
+   *                 contractDocumentId:
+   *                   type: integer
+   *       400:
+   *         description: 잘못된 요청
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "파일이 없습니다"
+   *       401:
+   *         description: 인증이 필요합니다
+   */
   // 계약서 업로드
   router.post(
     '/upload',
@@ -282,87 +340,6 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
     isAuthenticated,
     validateDto(DownloadContractDocumentsDto),
     contractDocumentsController.downloadMultipleDocuments,
-  );
-
-  /**
-   * @swagger
-   * /contractDocuments/{contractId}:
-   *   patch:
-   *     tags:
-   *       - ContractDocuments
-   *     summary: 계약서 수정
-   *     description: 계약서 추가/삭제
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: contractId
-   *         required: true
-   *         schema:
-   *           type: integer
-   *         description: 수정할 계약 ID
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         multipart/form-data:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               deleteDocumentIds:
-   *                 type: array
-   *                 items:
-   *                   type: integer
-   *                 description: 삭제할 문서 ID 목록
-   *                 example: [1, 2]
-   *               files:
-   *                 type: array
-   *                 items:
-   *                   type: string
-   *                   format: binary
-   *                 maxItems: 10
-   *                 description: 추가할 파일들 (최대 10개)
-   *     responses:
-   *       200:
-   *         description: 계약서 수정 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "계약서 수정 성공"
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "잘못된 요청입니다"
-   *       401:
-   *         description: 인증이 필요합니다
-   *       404:
-   *         description: 계약을 찾을 수 없습니다
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "계약을 찾을 수 없습니다"
-   */
-
-  // 계약서 수정 (추가/삭제)
-  router.patch(
-    '/:contractId',
-    isAuthenticated,
-    upload.array('files', 10),
-    validateDto(EditContractDocumentsDto),
-    contractDocumentsController.editContractDocuments,
   );
 
   return router;
