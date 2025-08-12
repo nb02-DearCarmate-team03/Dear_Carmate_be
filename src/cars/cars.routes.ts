@@ -34,7 +34,7 @@ const CarsRouter = (prisma: PrismaClient): Router => {
   const router = Router();
 
   const carRepository = new CarRepository(prisma);
-  const carService = new CarService(carRepository);
+  const carService = new CarService(carRepository, prisma);
   const carController = new CarController(carService);
 
   router.use(isAuthenticated);
