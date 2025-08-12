@@ -208,6 +208,12 @@ export class CustomerService {
     return { message: '고객 삭제 성공' };
   }
 
+  /**
+   * CSV 대용량 업로드 (트랜잭션 유지)
+   * - 트랜잭션 옵션: timeout/maxWait 적용
+   * - 중복 체크: 벌크 조회 2회 + 메모리 필터
+   * - 쓰기: createMany (대량이면 배치)
+   */
   async uploadCustomers(
     companyId: number,
     userId: number,
@@ -226,97 +232,102 @@ export class CustomerService {
         companyId,
         userId,
         fileName: file.originalname,
-        fileUrl: `uploads/${file.originalname}`, // fileUrl 설정
+        fileUrl: `uploads/${file.originalname}`,
         fileType: UploadType.CUSTOMER,
         status: UploadStatus.PROCESSING,
       },
     });
-
     console.log('📝 Upload 레코드 생성됨:', upload.id);
 
     try {
       const customers = await this.parseCSV(file.buffer);
       console.log('📊 파싱된 고객 수:', customers.length);
       console.log('📋 첫 번째 고객 데이터 샘플:', customers[0]);
-
       if (customers.length === 0) {
         throw new BadRequestError('파싱된 고객 데이터가 없습니다. CSV 형식을 확인해주세요.');
       }
 
-      // 트랜잭션을 사용한 대량 등록
-      const result = await this.prisma.$transaction(async (tx) => {
-        const repository = new CustomerRepository(tx);
+      // ⬇️ 트랜잭션 유지 + timeout/maxWait 적용 + 벌크 조회 → 메모리 필터 → 배치 createMany
+      const txResult = await this.prisma.$transaction(
+        async (tx) => {
+          const repository = new CustomerRepository(tx);
 
-        // 유효성 검사 및 중복 체크
-        const validCustomers: CreateCustomerDto[] = [];
-        let failedCount = 0;
+          // 1) 기존값 벌크 조회 (2쿼리)
+          const emails = customers.map((c) => c.email!).filter(Boolean);
+          const phones = customers.map((c) => c.phoneNumber);
 
-        console.log('🔍 중복 체크 및 유효성 검사 시작...');
+          const [existingByEmail, existingByPhone] = await Promise.all([
+            tx.customer.findMany({
+              where: { companyId, deletedAt: null, email: { in: emails } },
+              select: { email: true },
+            }),
+            tx.customer.findMany({
+              where: { companyId, deletedAt: null, phoneNumber: { in: phones } },
+              select: { phoneNumber: true },
+            }),
+          ]);
 
-        for (const [index, customer] of customers.entries()) {
-          try {
-            // 중복 체크
-            if (customer.email) {
-              const emailExists = await repository.existsByEmail(companyId, customer.email);
-              if (emailExists) {
-                console.log(`❌ 이메일 중복 (${index + 1}번째):`, customer.email);
-                failedCount++;
-                continue;
-              }
-            }
+          const emailSet = new Set<string>(existingByEmail.map((e) => e.email));
+          const phoneSet = new Set<string>(existingByPhone.map((p) => p.phoneNumber));
 
-            const phoneExists = await repository.existsByPhoneNumber(
-              companyId,
-              customer.phoneNumber,
-            );
-            if (phoneExists) {
-              console.log(`❌ 연락처 중복 (${index + 1}번째):`, customer.phoneNumber);
-              failedCount++;
+          // 2) 메모리 필터 (업로드 내 중복도 방지)
+          const validCustomers: CreateCustomerDto[] = [];
+          let failedCount = 0;
+
+          for (const c of customers) {
+            const missing = !c.name || !c.gender || !c.phoneNumber || !c.email;
+            const dup = emailSet.has(c.email!) || phoneSet.has(c.phoneNumber);
+            if (missing || dup) {
+              failedCount += 1;
               continue;
             }
-
-            validCustomers.push(customer);
-            console.log(`✅ 유효한 고객 데이터 (${index + 1}번째):`, customer.name);
-          } catch (error) {
-            console.log(`❌ 유효성 검사 오류 (${index + 1}번째):`, error);
-            failedCount++;
+            emailSet.add(c.email!);
+            phoneSet.add(c.phoneNumber);
+            validCustomers.push(c);
           }
-        }
 
-        console.log('📈 유효한 고객 수:', validCustomers.length);
-        console.log('📉 실패한 고객 수:', failedCount);
+          if (validCustomers.length === 0) {
+            throw new BadRequestError('유효한 고객 데이터가 없습니다.');
+          }
 
-        if (validCustomers.length === 0) {
-          throw new BadRequestError('유효한 고객 데이터가 없습니다.');
-        }
+          // 3) 대량 등록 (배치 처리 권장)
+          const BATCH = 1000; // 필요 시 조정
+          let createdCount = 0;
 
-        // 대량 등록
-        console.log('💾 대량 등록 시작...');
-        const createResult = await repository.createMany(companyId, validCustomers);
-        console.log('✅ 대량 등록 완료. 생성된 레코드 수:', createResult.count);
+          for (let i = 0; i < validCustomers.length; i += BATCH) {
+            const slice = validCustomers.slice(i, i + BATCH);
+            const createRes = await repository.createMany(companyId, slice); // repo는 tx 기반
+            createdCount += createRes.count;
+          }
 
-        return {
-          total: customers.length,
-          success: createResult.count,
-          failed: failedCount,
-        };
-      });
+          return {
+            total: customers.length,
+            success: createdCount,
+            failed: failedCount,
+          };
+        },
+        {
+          timeout: 20_000, // ⏱ 트랜잭션 최대 실행시간
+          maxWait: 20_000, // ⏳ 커넥션 획득 대기시간
+          // isolationLevel: 'ReadCommitted', // (선택) 필요 시 지정
+        },
+      );
 
-      // Upload 상태 업데이트
+      // Upload 상태 업데이트 (성공)
       await this.prisma.upload.update({
         where: { id: upload.id },
         data: {
           status: UploadStatus.COMPLETED,
-          totalRecords: result.total,
-          processedRecords: result.total,
-          successRecords: result.success,
-          failedRecords: result.failed,
+          totalRecords: txResult.total,
+          processedRecords: txResult.success + txResult.failed, // 의미 명확
+          successRecords: txResult.success,
+          failedRecords: txResult.failed,
         },
       });
 
-      console.log('🎉 업로드 완료:', result);
+      console.log('🎉 업로드 완료:', txResult);
       return {
-        message: `업로드가 완료되었습니다. 총 ${result.total}개 중 ${result.success}개 성공, ${result.failed}개 실패`,
+        message: `업로드가 완료되었습니다. 총 ${txResult.total}개 중 ${txResult.success}개 성공, ${txResult.failed}개 실패`,
       };
     } catch (error) {
       console.error('❌ 업로드 실패:', error);
