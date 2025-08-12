@@ -78,6 +78,904 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /dashboard:
+    get:
+      tags:
+        - Dashboard
+      summary: 대시보드 통계 조회
+      description: 대시보드 요약 통계 정보 조회
+      responses:
+        '200':
+          description: 대시보드 통계 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /images/upload:
+    post:
+      tags:
+        - Images
+      summary: 이미지 URL 생성
+      description: 이미지 업로드를 위한 presigned URL 생성
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 이미지 URL 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imageUrl:
+                    type: string
+                    example: 'https://s3.amazonaws.com/...'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        default: 1
+      description: 페이지 번호
+
+    PageSizeParam:
+      in: query
+      name: pageSize
+      schema:
+        type: integer
+        default: 8
+      description: 페이지당 아이템 수
+
+    KeywordParam:
+      in: query
+      name: keyword
+      schema:
+        type: string
+      description: 검색 키워드
+
+  schemas:
+    # User schemas
+    RegisterUserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - employeeNumber
+        - phoneNumber
+        - password
+        - passwordConfirmation
+        - company
+        - companyCode
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        password:
+          type: string
+          format: password
+        passwordConfirmation:
+          type: string
+          format: password
+        company:
+          type: string
+        companyCode:
+          type: string
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        currentPassword:
+          type: string
+        password:
+          type: string
+        passwordConfirmation:
+          type: string
+        imageUrl:
+          type: string
+
+    UserLoginResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        isAdmin:
+          type: boolean
+        imageUrl:
+          type: string
+        company:
+          type: object
+          properties:
+            companyCode:
+              type: string
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        employeeNumber:
+          type: string
+        phoneNumber:
+          type: string
+        imageUrl:
+          type: string
+        isAdmin:
+          type: boolean
+        company:
+          type: object
+          properties:
+            companyCode:
+              type: string
+
+    UserListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              email:
+                type: string
+              employeeNumber:
+                type: string
+              phoneNumber:
+                type: string
+              company:
+                type: object
+                properties:
+                  companyName:
+                    type: string
+
+    # Company schemas
+    CreateCompanyRequest:
+      type: object
+      required:
+        - companyName
+        - companyCode
+      properties:
+        companyName:
+          type: string
+        companyCode:
+          type: string
+
+    UpdateCompanyRequest:
+      type: object
+      properties:
+        companyName:
+          type: string
+        companyCode:
+          type: string
+
+    CompanyResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        companyName:
+          type: string
+        companyCode:
+          type: string
+        userCount:
+          type: integer
+
+    CompanyListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyResponse'
+
+    # Car schemas
+    CreateCarRequest:
+      type: object
+      required:
+        - carNumber
+        - manufacturer
+        - model
+        - type
+        - manufacturingYear
+        - mileage
+        - price
+      properties:
+        carNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        type:
+          $ref: '#/components/schemas/CarType'
+        manufacturingYear:
+          type: integer
+        mileage:
+          type: integer
+        price:
+          type: number
+        accidentCount:
+          type: integer
+          default: 0
+        explanation:
+          type: string
+        accidentDetails:
+          type: string
+
+    UpdateCarRequest:
+      type: object
+      properties:
+        carNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        manufacturingYear:
+          type: integer
+        mileage:
+          type: integer
+        price:
+          type: number
+        accidentCount:
+          type: integer
+        explanation:
+          type: string
+        accidentDetails:
+          type: string
+
+    CarResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        carNumber:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        type:
+          $ref: '#/components/schemas/CarType'
+        manufacturingYear:
+          type: integer
+        mileage:
+          type: integer
+        price:
+          type: number
+        accidentCount:
+          type: integer
+        explanation:
+          type: string
+        accidentDetails:
+          type: string
+        status:
+          $ref: '#/components/schemas/CarStatus'
+
+    CarListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CarResponse'
+
+    # Customer schemas
+    CreateCustomerRequest:
+      type: object
+      required:
+        - name
+        - gender
+        - phoneNumber
+        - email
+      properties:
+        name:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        phoneNumber:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        region:
+          $ref: '#/components/schemas/Region'
+        email:
+          type: string
+          format: email
+        memo:
+          type: string
+
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        phoneNumber:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        region:
+          $ref: '#/components/schemas/Region'
+        email:
+          type: string
+          format: email
+        memo:
+          type: string
+
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        phoneNumber:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        region:
+          $ref: '#/components/schemas/Region'
+        email:
+          type: string
+        memo:
+          type: string
+        contractCount:
+          type: integer
+
+    CustomerListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerResponse'
+
+    # ============= 계약 관련 스키마 추가 =============
+    CreateContractRequest:
+      type: object
+      required:
+        - carId
+        - customerId
+      properties:
+        carId:
+          type: integer
+          description: 계약할 차량 ID
+        customerId:
+          type: integer
+          description: 계약 고객 ID
+        contractPrice:
+          type: number
+          description: 계약 금액
+        status:
+          $ref: '#/components/schemas/ContractStatus'
+          description: 계약 상태
+        contractDate:
+          type: string
+          format: date
+          description: 계약일
+        possession:
+          $ref: '#/components/schemas/Possession'
+          description: 인수 상태
+        contractCompleted:
+          type: boolean
+          description: 계약 완료 여부
+        meetings:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingRequest'
+          description: 미팅 일정
+
+    UpdateContractRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/ContractStatus'
+          description: 계약 상태
+        resolutionDate:
+          type: string
+          format: date
+          description: 해결일
+        contractPrice:
+          type: number
+          description: 계약 금액
+        userId:
+          type: integer
+          description: 담당자 ID
+        customerId:
+          type: integer
+          description: 고객 ID
+        carId:
+          type: integer
+          description: 차량 ID
+        meetings:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpdateMeetingRequest'
+          description: 미팅 일정
+        contractDocuments:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpdateContractDocumentRequest'
+          description: 계약서 문서
+
+    ContractResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 계약 ID
+        car:
+          type: object
+          properties:
+            id:
+              type: integer
+            model:
+              type: string
+          description: 차량 정보
+        customer:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          description: 고객 정보
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+          description: 담당자 정보
+        meetings:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingResponse'
+          description: 미팅 일정
+        contractPrice:
+          type: number
+          description: 계약 금액
+        resolutionDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: 해결일
+        status:
+          type: string
+          enum: [carInspection, priceNegotiation, contractDraft, contractSuccessful, contractFailed]
+          description: 계약 상태
+
+    ContractListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractResponse'
+
+    ContractGroupedListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: object
+          properties:
+            carInspection:
+              $ref: '#/components/schemas/ContractGroupData'
+            priceNegotiation:
+              $ref: '#/components/schemas/ContractGroupData'
+            contractDraft:
+              $ref: '#/components/schemas/ContractGroupData'
+            contractSuccessful:
+              $ref: '#/components/schemas/ContractGroupData'
+            contractFailed:
+              $ref: '#/components/schemas/ContractGroupData'
+
+    ContractGroupData:
+      type: object
+      properties:
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractResponse'
+
+    MeetingRequest:
+      type: object
+      required:
+        - date
+      properties:
+        date:
+          type: string
+          format: date
+          description: 미팅 날짜
+        alarms:
+          type: array
+          items:
+            type: string
+            format: date-time
+          description: 알람 시간 목록
+
+    UpdateMeetingRequest:
+      type: object
+      required:
+        - date
+      properties:
+        date:
+          type: string
+          format: date
+          description: 미팅 날짜
+        alarms:
+          type: array
+          items:
+            type: string
+            format: date-time
+          description: 알람 시간 목록
+
+    MeetingResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: 미팅 날짜
+        alarms:
+          type: array
+          items:
+            type: string
+            format: date-time
+          description: 알람 시간 목록
+
+    UpdateContractDocumentRequest:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          description: 계약서 문서 ID
+        fileName:
+          type: string
+          description: 파일명
+
+    ContractCarOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        model:
+          type: string
+        carNumber:
+          type: string
+
+    ContractCustomerOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+
+    ContractUserOption:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+
+    # Contract Document schemas
+    ContractDocumentListResponse:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalItemCount:
+          type: integer
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              contractName:
+                type: string
+              resolutionDate:
+                type: string
+                format: date
+              documentsCount:
+                type: integer
+              manager:
+                type: string
+              carNumber:
+                type: string
+              documents:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    fileName:
+                      type: string
+
+    # Dashboard schemas
+    DashboardResponse:
+      type: object
+      properties:
+        monthlySales:
+          type: number
+        lastMonthSales:
+          type: number
+        growthRate:
+          type: number
+        proceedingContractsCount:
+          type: integer
+        completedContractsCount:
+          type: integer
+        contractsByCarType:
+          type: array
+          items:
+            type: object
+            properties:
+              carType:
+                $ref: '#/components/schemas/CarType'
+              count:
+                type: integer
+        salesByCarType:
+          type: array
+          items:
+            type: object
+            properties:
+              carType:
+                $ref: '#/components/schemas/CarType'
+              amount:
+                type: number
+
+    # Enums
+    CarType:
+      type: string
+      enum:
+        - 경·소형
+        - 준중·중형
+        - 대형
+        - 스포츠카
+        - SUV
+
+    CarStatus:
+      type: string
+      enum:
+        - possession
+        - contractProceeding
+        - contractCompleted
+
+    Gender:
+      type: string
+      enum:
+        - male
+        - female
+
+    AgeGroup:
+      type: string
+      enum:
+        - 10대
+        - 20대
+        - 30대
+        - 40대
+        - 50대
+        - 60대
+        - 70대
+        - 80대
+
+    Region:
+      type: string
+      enum:
+        - 서울
+        - 경기
+        - 인천
+        - 강원
+        - 충북
+        - 충남
+        - 세종
+        - 대전
+        - 전북
+        - 전남
+        - 광주
+        - 경북
+        - 경남
+        - 대구
+        - 울산
+        - 부산
+        - 제주
+
+    ContractStatus:
+      type: string
+      enum:
+        - carInspection
+        - priceNegotiation
+        - contractDraft
+        - contractSuccessful
+        - contractFailed
+      description: |
+        계약 상태:
+        - carInspection: 차량 점검
+        - priceNegotiation: 가격 협상
+        - contractDraft: 계약서 작성
+        - contractSuccessful: 계약 성공
+        - contractFailed: 계약 실패
+
+    Possession:
+      type: string
+      enum:
+        - pending
+        - processing
+        - completed
+
+    # Error schemas
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: 잘못된 요청
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '잘못된 요청입니다'
+            code: 'BAD_REQUEST'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    Unauthorized:
+      description: 인증이 필요합니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '로그인이 필요합니다'
+            code: 'UNAUTHORIZED'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    Forbidden:
+      description: 권한이 없습니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '접근 권한이 없습니다'
+            code: 'FORBIDDEN'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    NotFound:
+      description: 리소스를 찾을 수 없습니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '존재하지 않는 리소스입니다'
+            code: 'NOT_FOUND'
+            timestamp: '2024-01-01T00:00:00Z'
+
+    Conflict:
+      description: 충돌이 발생했습니다
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: '이미 존재하는 데이터입니다'
+            code: 'CONFLICT'
+            timestamp: '2024-01-01T00:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /auth/refresh:
     post:
       tags:
@@ -717,6 +1615,192 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  # ============= 계약 API 추가 =============
+  /contracts:
+    post:
+      tags:
+        - Contracts
+      summary: 계약 등록
+      description: 새로운 계약 정보 등록
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContractRequest'
+      responses:
+        '201':
+          description: 계약 등록 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Contracts
+      summary: 계약 목록 조회
+      description: 등록된 계약 목록 조회 (검색, 페이지네이션, 그룹화 지원)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: searchBy
+          schema:
+            type: string
+            enum: [customerName, userName, carNumber, carModel, all]
+          description: 검색 기준
+        - $ref: '#/components/parameters/KeywordParam'
+        - in: query
+          name: grouped
+          schema:
+            type: string
+            enum: [true, false]
+          description: 상태별 그룹화 여부
+      responses:
+        '200':
+          description: 계약 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ContractListResponse'
+                  - $ref: '#/components/schemas/ContractGroupedListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /contracts/{contractId}:
+    get:
+      tags:
+        - Contracts
+      summary: 계약 상세 조회
+      description: 특정 계약의 상세 정보 조회
+      parameters:
+        - in: path
+          name: contractId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 계약 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Contracts
+      summary: 계약 정보 수정
+      description: 계약 정보 수정
+      parameters:
+        - in: path
+          name: contractId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContractRequest'
+      responses:
+        '200':
+          description: 계약 정보 수정 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Contracts
+      summary: 계약 삭제
+      description: 계약 정보 삭제
+      parameters:
+        - in: path
+          name: contractId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: 계약 삭제 성공
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /contracts/cars:
+    get:
+      tags:
+        - Contracts
+      summary: 계약용 차량 선택 목록 조회
+      description: 계약 등록/수정 시 사용할 차량 목록 조회
+      responses:
+        '200':
+          description: 차량 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContractCarOption'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /contracts/customers:
+    get:
+      tags:
+        - Contracts
+      summary: 계약용 고객 선택 목록 조회
+      description: 계약 등록/수정 시 사용할 고객 목록 조회
+      responses:
+        '200':
+          description: 고객 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContractCustomerOption'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /contracts/users:
+    get:
+      tags:
+        - Contracts
+      summary: 계약용 담당자 선택 목록 조회
+      description: 계약 등록/수정 시 사용할 담당자 목록 조회
+      responses:
+        '200':
+          description: 담당자 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContractUserOption'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /contractDocuments/{contractDocumentId}/download:
     get:
       tags:
@@ -884,643 +1968,4 @@ paths:
                 format: binary
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /dashboard:
-    get:
-      tags:
-        - Dashboard
-      summary: 대시보드 통계 조회
-      description: 대시보드 요약 통계 정보 조회
-      responses:
-        '200':
-          description: 대시보드 통계 조회 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DashboardResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /images/upload:
-    post:
-      tags:
-        - Images
-      summary: 이미지 URL 생성
-      description: 이미지 업로드를 위한 presigned URL 생성
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                image:
-                  type: string
-                  format: binary
-      responses:
-        '200':
-          description: 이미지 URL 생성 성공
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  imageUrl:
-                    type: string
-                    example: 'https://s3.amazonaws.com/...'
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  parameters:
-    PageParam:
-      in: query
-      name: page
-      schema:
-        type: integer
-        default: 1
-      description: 페이지 번호
-
-    PageSizeParam:
-      in: query
-      name: pageSize
-      schema:
-        type: integer
-        default: 8
-      description: 페이지당 아이템 수
-
-    KeywordParam:
-      in: query
-      name: keyword
-      schema:
-        type: string
-      description: 검색 키워드
-
-  schemas:
-    # User schemas
-    RegisterUserRequest:
-      type: object
-      required:
-        - name
-        - email
-        - employeeNumber
-        - phoneNumber
-        - password
-        - passwordConfirmation
-        - company
-        - companyCode
-      properties:
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        employeeNumber:
-          type: string
-        phoneNumber:
-          type: string
-        password:
-          type: string
-          format: password
-        passwordConfirmation:
-          type: string
-          format: password
-        company:
-          type: string
-        companyCode:
-          type: string
-
-    UpdateUserRequest:
-      type: object
-      properties:
-        employeeNumber:
-          type: string
-        phoneNumber:
-          type: string
-        currentPassword:
-          type: string
-        password:
-          type: string
-        passwordConfirmation:
-          type: string
-        imageUrl:
-          type: string
-
-    UserLoginResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        email:
-          type: string
-        employeeNumber:
-          type: string
-        phoneNumber:
-          type: string
-        isAdmin:
-          type: boolean
-        imageUrl:
-          type: string
-        company:
-          type: object
-          properties:
-            companyCode:
-              type: string
-
-    UserResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        email:
-          type: string
-        employeeNumber:
-          type: string
-        phoneNumber:
-          type: string
-        imageUrl:
-          type: string
-        isAdmin:
-          type: boolean
-        company:
-          type: object
-          properties:
-            companyCode:
-              type: string
-
-    UserListResponse:
-      type: object
-      properties:
-        currentPage:
-          type: integer
-        totalPages:
-          type: integer
-        totalItemCount:
-          type: integer
-        data:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-              name:
-                type: string
-              email:
-                type: string
-              employeeNumber:
-                type: string
-              phoneNumber:
-                type: string
-              company:
-                type: object
-                properties:
-                  companyName:
-                    type: string
-
-    # Company schemas
-    CreateCompanyRequest:
-      type: object
-      required:
-        - companyName
-        - companyCode
-      properties:
-        companyName:
-          type: string
-        companyCode:
-          type: string
-
-    UpdateCompanyRequest:
-      type: object
-      properties:
-        companyName:
-          type: string
-        companyCode:
-          type: string
-
-    CompanyResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        companyName:
-          type: string
-        companyCode:
-          type: string
-        userCount:
-          type: integer
-
-    CompanyListResponse:
-      type: object
-      properties:
-        currentPage:
-          type: integer
-        totalPages:
-          type: integer
-        totalItemCount:
-          type: integer
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/CompanyResponse'
-
-    # Car schemas
-    CreateCarRequest:
-      type: object
-      required:
-        - carNumber
-        - manufacturer
-        - model
-        - type
-        - manufacturingYear
-        - mileage
-        - price
-      properties:
-        carNumber:
-          type: string
-        manufacturer:
-          type: string
-        model:
-          type: string
-        type:
-          $ref: '#/components/schemas/CarType'
-        manufacturingYear:
-          type: integer
-        mileage:
-          type: integer
-        price:
-          type: number
-        accidentCount:
-          type: integer
-          default: 0
-        explanation:
-          type: string
-        accidentDetails:
-          type: string
-
-    UpdateCarRequest:
-      type: object
-      properties:
-        carNumber:
-          type: string
-        manufacturer:
-          type: string
-        model:
-          type: string
-        manufacturingYear:
-          type: integer
-        mileage:
-          type: integer
-        price:
-          type: number
-        accidentCount:
-          type: integer
-        explanation:
-          type: string
-        accidentDetails:
-          type: string
-
-    CarResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        carNumber:
-          type: string
-        manufacturer:
-          type: string
-        model:
-          type: string
-        type:
-          $ref: '#/components/schemas/CarType'
-        manufacturingYear:
-          type: integer
-        mileage:
-          type: integer
-        price:
-          type: number
-        accidentCount:
-          type: integer
-        explanation:
-          type: string
-        accidentDetails:
-          type: string
-        status:
-          $ref: '#/components/schemas/CarStatus'
-
-    CarListResponse:
-      type: object
-      properties:
-        currentPage:
-          type: integer
-        totalPages:
-          type: integer
-        totalItemCount:
-          type: integer
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/CarResponse'
-
-    # Customer schemas
-    CreateCustomerRequest:
-      type: object
-      required:
-        - name
-        - gender
-        - phoneNumber
-        - email
-      properties:
-        name:
-          type: string
-        gender:
-          $ref: '#/components/schemas/Gender'
-        phoneNumber:
-          type: string
-        ageGroup:
-          $ref: '#/components/schemas/AgeGroup'
-        region:
-          $ref: '#/components/schemas/Region'
-        email:
-          type: string
-          format: email
-        memo:
-          type: string
-
-    UpdateCustomerRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        gender:
-          $ref: '#/components/schemas/Gender'
-        phoneNumber:
-          type: string
-        ageGroup:
-          $ref: '#/components/schemas/AgeGroup'
-        region:
-          $ref: '#/components/schemas/Region'
-        email:
-          type: string
-          format: email
-        memo:
-          type: string
-
-    CustomerResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        gender:
-          $ref: '#/components/schemas/Gender'
-        phoneNumber:
-          type: string
-        ageGroup:
-          $ref: '#/components/schemas/AgeGroup'
-        region:
-          $ref: '#/components/schemas/Region'
-        email:
-          type: string
-        memo:
-          type: string
-        contractCount:
-          type: integer
-
-    CustomerListResponse:
-      type: object
-      properties:
-        currentPage:
-          type: integer
-        totalPages:
-          type: integer
-        totalItemCount:
-          type: integer
-        customers:
-          type: array
-          items:
-            $ref: '#/components/schemas/CustomerResponse'
-
-    # Contract Document schemas
-    ContractDocumentListResponse:
-      type: object
-      properties:
-        currentPage:
-          type: integer
-        totalPages:
-          type: integer
-        totalItemCount:
-          type: integer
-        data:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-              contractName:
-                type: string
-              resolutionDate:
-                type: string
-                format: date
-              documentsCount:
-                type: integer
-              manager:
-                type: string
-              carNumber:
-                type: string
-              documents:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    fileName:
-                      type: string
-
-    # Dashboard schemas
-    DashboardResponse:
-      type: object
-      properties:
-        monthlySales:
-          type: number
-        lastMonthSales:
-          type: number
-        growthRate:
-          type: number
-        proceedingContractsCount:
-          type: integer
-        completedContractsCount:
-          type: integer
-        contractsByCarType:
-          type: array
-          items:
-            type: object
-            properties:
-              carType:
-                $ref: '#/components/schemas/CarType'
-              count:
-                type: integer
-        salesByCarType:
-          type: array
-          items:
-            type: object
-            properties:
-              carType:
-                $ref: '#/components/schemas/CarType'
-              amount:
-                type: number
-
-    # Enums
-    CarType:
-      type: string
-      enum:
-        - 경·소형
-        - 준중·중형
-        - 대형
-        - 스포츠카
-        - SUV
-
-    CarStatus:
-      type: string
-      enum:
-        - possession
-        - contractProceeding
-        - contractCompleted
-
-    Gender:
-      type: string
-      enum:
-        - male
-        - female
-
-    AgeGroup:
-      type: string
-      enum:
-        - 10대
-        - 20대
-        - 30대
-        - 40대
-        - 50대
-        - 60대
-        - 70대
-        - 80대
-
-    Region:
-      type: string
-      enum:
-        - 서울
-        - 경기
-        - 인천
-        - 강원
-        - 충북
-        - 충남
-        - 세종
-        - 대전
-        - 전북
-        - 전남
-        - 광주
-        - 경북
-        - 경남
-        - 대구
-        - 울산
-        - 부산
-        - 제주
-
-    ContractStatus:
-      type: string
-      enum:
-        - car_inspection
-        - price_negotiation
-        - contractDraft
-        - contract_successful
-        - contract_failed
-
-    Possession:
-      type: string
-      enum:
-        - pending
-        - processing
-        - completed
-
-    # Error schemas
-    Error:
-      type: object
-      properties:
-        message:
-          type: string
-        code:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-
-  responses:
-    BadRequest:
-      description: 잘못된 요청
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            message: '잘못된 요청입니다'
-            code: 'BAD_REQUEST'
-            timestamp: '2024-01-01T00:00:00Z'
-
-    Unauthorized:
-      description: 인증이 필요합니다
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            message: '로그인이 필요합니다'
-            code: 'UNAUTHORIZED'
-            timestamp: '2024-01-01T00:00:00Z'
-
-    Forbidden:
-      description: 권한이 없습니다
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            message: '접근 권한이 없습니다'
-            code: 'FORBIDDEN'
-            timestamp: '2024-01-01T00:00:00Z'
-
-    NotFound:
-      description: 리소스를 찾을 수 없습니다
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            message: '존재하지 않는 리소스입니다'
-            code: 'NOT_FOUND'
-            timestamp: '2024-01-01T00:00:00Z'
-
-    Conflict:
-      description: 충돌이 발생했습니다
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            message: '이미 존재하는 데이터입니다'
-            code: 'CONFLICT'
-            timestamp: '2024-01-01T00:00:00Z'
+        '401': $ref
