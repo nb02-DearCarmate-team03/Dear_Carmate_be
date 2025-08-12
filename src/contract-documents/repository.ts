@@ -12,6 +12,17 @@ interface ContractWithCustomer {
   } | null;
 }
 
+interface ContractForDraft {
+  id: number;
+  car: {
+    carNumber: string;
+    model: string; // Car 스키마의 model 필드 사용
+  };
+  customer: {
+    name: string;
+  } | null;
+}
+
 export default class ContractDocumentsRepository {
   // eslint-disable-next-line no-empty-function
   constructor(private readonly prisma: PrismaClient) {}
@@ -110,6 +121,38 @@ export default class ContractDocumentsRepository {
     ]);
 
     return { documents, total };
+  }
+
+  // ✨ 새로운 메서드: 계약서 추가용 계약 목록 조회
+  async findContractsForDraft(companyId: number): Promise<ContractForDraft[]> {
+    return this.prisma.contract.findMany({
+      where: {
+        companyId,
+        deletedAt: null,
+        // 계약서가 없는 계약들만 조회
+        contractDocuments: {
+          none: {
+            deletedAt: null,
+          },
+        },
+      },
+      include: {
+        car: {
+          select: {
+            carNumber: true,
+            model: true, // Car 스키마의 model 필드 사용
+          },
+        },
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
   }
 
   async findContractById(

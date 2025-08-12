@@ -162,7 +162,66 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
    *       401:
    *         description: 인증이 필요합니다
    */
+  // 계약서 추가용 계약 목록 조회
+  router.get('/draft', isAuthenticated, contractDocumentsController.getContractsForDraft);
 
+  /**
+   * @swagger
+   * /contractDocuments/upload:
+   *   post:
+   *     tags:
+   *       - ContractDocuments
+   *     summary: 계약서 업로드
+   *     description: 계약서 파일 업로드 (최대 10개, 각 파일 최대 10MB)
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - contractId
+   *               - files
+   *             properties:
+   *               contractId:
+   *                 type: integer
+   *                 description: 계약 ID
+   *                 example: 1
+   *               files:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                   format: binary
+   *                 maxItems: 10
+   *                 description: 업로드할 파일들 (최대 10개, 각 10MB)
+   *     responses:
+   *       200:
+   *         description: 계약서 업로드 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "계약서 업로드 성공"
+   *                 contractDocumentId:
+   *                   type: integer
+   *       400:
+   *         description: 잘못된 요청
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 message:
+   *                   type: string
+   *                   example: "파일이 없습니다"
+   *       401:
+   *         description: 인증이 필요합니다
+   */
   // 계약서 업로드
   router.post(
     '/upload',

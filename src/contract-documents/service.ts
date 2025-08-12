@@ -49,6 +49,12 @@ interface PaginatedResult {
   data: ContractDocumentListItem[];
 }
 
+// ✨ 새로운 인터페이스: 계약서 추가용 계약 목록
+interface ContractForDraftItem {
+  id: number;
+  data: string;
+}
+
 export default class ContractDocumentsService {
   private readonly emailService: EmailService;
   private readonly allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
@@ -83,6 +89,16 @@ export default class ContractDocumentsService {
       totalItemCount: total,
       data,
     };
+  }
+
+  // ✨ 새로운 메서드: 계약서 추가용 계약 목록 조회
+  async getContractsForDraft(companyId: number): Promise<ContractForDraftItem[]> {
+    const contracts = await this.contractDocumentsRepository.findContractsForDraft(companyId);
+
+    return contracts.map((contract) => ({
+      id: contract.id,
+      data: `${contract.car.model} - ${contract.customer?.name || '고객정보없음'}`,
+    }));
   }
 
   async uploadContractDocuments(

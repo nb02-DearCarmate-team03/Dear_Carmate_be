@@ -23,6 +23,19 @@ export default class ContractDocumentsController {
     }
   };
 
+  // ✨ 새로운 메서드: 계약서 추가용 계약 목록 조회
+  getContractsForDraft = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { companyId } = req.user!;
+
+      const result = await this.contractDocumentsService.getContractsForDraft(companyId);
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   uploadContractDocuments = async (
     req: Request,
     res: Response,
