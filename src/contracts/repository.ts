@@ -4,10 +4,26 @@ import { UpdateContractDto } from './dto/update-contract.dto';
 import { BadRequestError } from '../common/errors/bad-request-error';
 
 // 공통 include
+
+// 공백이 아닌 문자열 판별
 const isNonEmptyText = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
+// meetings 아이템의 date 존재 확인용 타입가드
+type MeetingLike = { date?: string | null; alarms?: unknown };
+const hasNonEmptyDateField = <T extends MeetingLike>(value: T): value is T & { date: string } =>
+  isNonEmptyText((value as any)?.date);
+
+// Date 생성용 통합 변환기
+const convertToDate = (value: string | number | Date): Date => new Date(value as any);
+
 const toDateStrict = (value: string | number | Date): Date => new Date(value as any);
+
+type MaybeMeeting = { date?: string | null; alarms?: unknown };
+
+const hasNonEmptyDate = <T extends MaybeMeeting>(value: T): value is T & { date: string } => {
+  return typeof value?.date === 'string' && value.date.trim().length > 0;
+};
 
 const contractInclude = {
   user: { select: { id: true, name: true } },
@@ -117,19 +133,17 @@ export default class ContractRepository {
         meetings:
           Array.isArray(meetings) && meetings.length > 0
             ? {
-                create: meetings
-                  .filter((m) => isNonEmptyText((m as any)?.date)) // date가 있는 항목만 생성
-                  .map((meeting) => ({
-                    date: toDateStrict(meeting.date), // string 보장됨
-                    alarms:
-                      Array.isArray(meeting.alarms) && meeting.alarms.length > 0
-                        ? {
-                            create: meeting.alarms
-                              .filter(isNonEmptyText) // 문자열만 허용
-                              .map((text) => ({ time: toDateStrict(text) })),
-                          }
-                        : undefined,
-                  })),
+                create: meetings.filter(hasNonEmptyDateField).map((meeting) => ({
+                  date: convertToDate(meeting.date),
+                  alarms:
+                    Array.isArray(meeting.alarms) && meeting.alarms.length > 0
+                      ? {
+                          create: meeting.alarms
+                            .filter(isNonEmptyText)
+                            .map((text) => ({ time: convertToDate(text) })),
+                        }
+                      : undefined,
+                })),
               }
             : undefined,
       },
@@ -205,18 +219,35 @@ export default class ContractRepository {
     if (updateData.carId !== undefined) prismaUpdate.car = { connect: { id: updateData.carId } };
 
     if (updateData.meetings !== undefined) {
+      const meetingsToCreate = (updateData.meetings ?? [])
+        .filter(hasNonEmptyDateField) // ✅ date 있는 항목만
+        .map((meeting) => ({
+          // ❌ (meeting: UpdateMeetingDto) 표기 금지
+          date: convertToDate(meeting.date),
+          alarms:
+            Array.isArray(meeting.alarms) && meeting.alarms.length > 0
+              ? {
+                  create: meeting.alarms
+                    .filter(isNonEmptyText)
+                    .map((text) => ({ time: convertToDate(text) })),
+                }
+              : undefined,
+        }));
+
       prismaUpdate.meetings = {
         deleteMany: { contractId },
-        create: updateData.meetings.map((meeting) => ({
-          date: new Date(meeting.date),
-          alarms: { create: (meeting.alarms ?? []).map((t) => ({ time: new Date(t) })) },
-        })),
+        ...(meetingsToCreate.length > 0 ? { create: meetingsToCreate } : {}),
+      };
+
+      prismaUpdate.meetings = {
+        deleteMany: { contractId },
+        ...(meetingsToCreate.length > 0 ? { create: meetingsToCreate } : {}),
       };
     }
 
     if (updateData.contractDocuments !== undefined) {
       const documentIds = (updateData.contractDocuments ?? [])
-        .map((d) => d?.id)
+        .map((d) => (typeof d === 'number' ? d : d?.id))
         .filter((id): id is number => Number.isInteger(id));
 
       if (documentIds.length > 0) {
