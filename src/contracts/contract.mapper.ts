@@ -14,16 +14,17 @@ export type ContractResponse = {
   car?: { id: number; model: string };
   customer?: { id: number; name: string };
   user?: { id: number; name: string };
-  meetings: Array<{ date: string; alarms: string[] }>;
-  contractPrice?: number; // 없으면 필드 자체 제외
-  resolutionDate: string | null; // 없으면 null
+  meetings: { date: string; alarms: string[] }[];
+  contractPrice?: number;
+  resolutionDate: string | null;
   status:
     | 'carInspection'
     | 'priceNegotiation'
     | 'contractDraft'
     | 'contractSuccessful'
-    | 'contractFailed'
-    | string;
+    | 'contractFailed';
+  // 👇 optional 로 두면 프론트 미사용 시에도 안전
+  contractDocuments: { id: number; fileName: string }[];
 };
 
 /* ---------- Raw 타입 (Prisma Include 결과 최소 정의) ---------- */
@@ -43,6 +44,7 @@ export type RawContract = {
   contractPrice?: number | Prisma.Decimal | null;
   resolutionDate?: Date | string | null;
   status: PrismaContractStatus | string;
+  contractDocuments?: { id: number; fileName: string }[] | null;
 };
 
 /* ---------- utils ---------- */
@@ -86,8 +88,9 @@ const STATUS_KEY: Record<string, ContractResponse['status']> = {
   CONTRACT_SUCCESSFUL: 'contractSuccessful',
   CONTRACT_FAILED: 'contractFailed',
 };
+
 export function toCamelStatus(s: string): ContractResponse['status'] {
-  return STATUS_KEY[s] ?? s;
+  return (STATUS_KEY[s] ?? s) as ContractResponse['status'];
 }
 
 /* ---------- mappers ---------- */
@@ -115,6 +118,10 @@ export function mapContract(row: RawContract): ContractResponse {
     contractPrice: decimalToNumber(row.contractPrice),
     resolutionDate: toLocalDateTime(row.resolutionDate ?? null),
     status: toCamelStatus(String(row.status)),
+    contractDocuments: (row.contractDocuments ?? []).map((d: { id: number; fileName: string }) => ({
+      id: d.id,
+      fileName: d.fileName,
+    })),
   };
 
   return response; // 순서 유지
