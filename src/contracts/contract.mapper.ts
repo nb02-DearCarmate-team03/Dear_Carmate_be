@@ -14,16 +14,16 @@ export type ContractResponse = {
   car?: { id: number; model: string };
   customer?: { id: number; name: string };
   user?: { id: number; name: string };
-  meetings: Array<{ date: string; alarms: string[] }>;
-  contractPrice?: number; // 없으면 필드 자체 제외
-  resolutionDate: string | null; // 없으면 null
+  meetings: { date: string; alarms: string[] }[];
+  contractPrice?: number;
+  resolutionDate: string | null;
   status:
     | 'carInspection'
     | 'priceNegotiation'
     | 'contractDraft'
     | 'contractSuccessful'
-    | 'contractFailed'
-    | string;
+    | 'contractFailed';
+  contractDocuments: { id: number; fileName: string }[];
 };
 
 /* ---------- Raw 타입 (Prisma Include 결과 최소 정의) ---------- */
@@ -43,6 +43,7 @@ export type RawContract = {
   contractPrice?: number | Prisma.Decimal | null;
   resolutionDate?: Date | string | null;
   status: PrismaContractStatus | string;
+  contractDocuments?: { id: number; fileName: string }[] | null;
 };
 
 /* ---------- utils ---------- */
@@ -86,8 +87,9 @@ const STATUS_KEY: Record<string, ContractResponse['status']> = {
   CONTRACT_SUCCESSFUL: 'contractSuccessful',
   CONTRACT_FAILED: 'contractFailed',
 };
+
 export function toCamelStatus(s: string): ContractResponse['status'] {
-  return STATUS_KEY[s] ?? s;
+  return (STATUS_KEY[s] ?? s) as ContractResponse['status'];
 }
 
 /* ---------- mappers ---------- */
@@ -106,15 +108,20 @@ function mapMeeting(m: RawMeeting): { date: string; alarms: string[] } {
  * - undefined 반환한 키는 JSON 직렬화 시 빠짐
  */
 export function mapContract(row: RawContract): ContractResponse {
+  const price = row.contractPrice == null ? 0 : decimalToNumber(row.contractPrice);
   const response: ContractResponse = {
     id: row.id,
     car: row.car ? { id: row.car.id, model: row.car.model } : undefined,
     customer: row.customer ? { id: row.customer.id, name: row.customer.name } : undefined,
     user: row.user ? { id: row.user.id, name: row.user.name } : undefined,
     meetings: (row.meetings ?? []).map(mapMeeting),
-    contractPrice: decimalToNumber(row.contractPrice),
+    contractPrice: price,
     resolutionDate: toLocalDateTime(row.resolutionDate ?? null),
     status: toCamelStatus(String(row.status)),
+    contractDocuments: (row.contractDocuments ?? []).map((d: { id: number; fileName: string }) => ({
+      id: d.id,
+      fileName: d.fileName,
+    })),
   };
 
   return response; // 순서 유지

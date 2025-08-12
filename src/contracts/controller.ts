@@ -35,7 +35,9 @@ export default class ContractController {
       const pageNum = page ? Number(page) : undefined;
       const sizeNum = pageSize ? Number(pageSize) : undefined;
 
-      if (grouped === 'true') {
+      const wantsGrouped = grouped === 'true' || (!pageNum && !sizeNum);
+
+      if (wantsGrouped) {
         const result = await this.contractService.getContractsGroupedPage(user, {
           searchBy,
           keyword,
@@ -49,12 +51,12 @@ export default class ContractController {
       const result = await this.contractService.getContractsPage(user, {
         searchBy,
         keyword,
-        page: pageNum,
-        pageSize: sizeNum,
+        page: pageNum!,
+        pageSize: sizeNum!,
       });
       res.status(200).json(result);
     } catch (error) {
-      next(error);
+      next(error as Error);
     }
   };
 
@@ -111,11 +113,10 @@ export default class ContractController {
     try {
       const user = req.user as RequestUser;
       const contractId = Number(req.params.contractId);
-
       await this.contractService.deleteContract(user, contractId);
-      res.status(204).send();
-    } catch (error) {
-      next(error);
+      res.status(200).json({ message: 'OK' });
+    } catch (e) {
+      next(e as Error);
     }
   };
 
@@ -124,9 +125,9 @@ export default class ContractController {
     try {
       const user = req.user as RequestUser;
       const rows = await this.contractService.getContractCars(user);
-      res.status(200).json(rows);
-    } catch (error) {
-      next(error);
+      res.status(200).json(rows.map((r) => ({ id: r.id, data: r.model })));
+    } catch (e) {
+      next(e as Error);
     }
   };
 
@@ -134,10 +135,10 @@ export default class ContractController {
   getContractCustomers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user as RequestUser;
-      const rows = await this.contractService.getContractCustomers(user);
-      res.status(200).json(rows);
-    } catch (error) {
-      next(error);
+      const rows = await this.contractService.getContractCustomers(user); // { id, name }
+      res.status(200).json(rows.map((r) => ({ id: r.id, data: r.name })));
+    } catch (e) {
+      next(e as Error);
     }
   };
 
@@ -145,10 +146,10 @@ export default class ContractController {
   getContractUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user as RequestUser;
-      const rows = await this.contractService.getContractUsers(user);
-      res.status(200).json(rows);
-    } catch (error) {
-      next(error);
+      const rows = await this.contractService.getContractUsers(user); // { id, name, email }
+      res.status(200).json(rows.map((r) => ({ id: r.id, data: r.name })));
+    } catch (e) {
+      next(e as Error);
     }
   };
 }

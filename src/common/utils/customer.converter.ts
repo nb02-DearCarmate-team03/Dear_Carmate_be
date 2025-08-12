@@ -9,10 +9,10 @@ export function genderToKorean(gender: Gender | null): string | null {
 
   // Prisma enum을 한글로 변환
   const genderMap: Record<string, string> = {
-    MALE: '남성', // ✅ 수정
-    FEMALE: '여성', // ✅ 수정
-    male: '남성', // 혹시 모를 소문자 케이스
-    female: '여성',
+    MALE: 'male', // ✅ 수정
+    FEMALE: 'female', // ✅ 수정
+    male: 'male', // 혹시 모를 소문자 케이스
+    female: 'female',
   };
 
   return genderMap[gender as string] || '남성'; // 기본값 설정

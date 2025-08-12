@@ -1,11 +1,13 @@
-import { IsArray, IsDateString, IsOptional } from 'class-validator';
+import { IsArray, IsOptional, IsString } from 'class-validator';
+import { ToKoreaStandardTimeDateTime } from '../../common/utils/contract.converter';
 
 export class MeetingDto {
-  @IsDateString()
+  @IsString()
+  @ToKoreaStandardTimeDateTime()
   date!: string;
 
-  @IsOptional()
   @IsArray()
-  @IsDateString({}, { each: true })
+  @IsOptional()
+  @ToKoreaStandardTimeDateTime()
   alarms?: string[];
 }

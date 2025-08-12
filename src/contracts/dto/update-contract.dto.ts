@@ -1,8 +1,17 @@
-import { IsOptional, IsEnum, IsInt, IsDateString, ValidateNested } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsInt,
+  IsDateString,
+  ValidateNested,
+  IsArray,
+  IsNumber,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ContractStatus as PrismaContractStatus } from '@prisma/client';
 import { UpdateContractDocumentDto } from './update-contract-document.dto';
-import { UpdateMeetingDto } from './update-meeting.dto';
+import { MeetingDto } from './meeting.dto';
+import { ToIdentifier, ToCurrencyAmount } from '../../common/utils/contract.converter';
 
 function toPrismaStatus(value?: unknown): PrismaContractStatus | undefined {
   if (value == null) return undefined;
@@ -28,6 +37,21 @@ function toPrismaStatus(value?: unknown): PrismaContractStatus | undefined {
 
 export class UpdateContractDto {
   @IsOptional()
+  @IsInt()
+  @ToIdentifier()
+  userId?: number;
+
+  @IsOptional()
+  @IsInt()
+  @ToIdentifier()
+  customerId?: number;
+
+  @IsOptional()
+  @IsInt()
+  @ToIdentifier()
+  carId?: number;
+
+  @IsOptional()
   @Transform(({ value }) => toPrismaStatus(value))
   @IsEnum(PrismaContractStatus)
   status?: PrismaContractStatus;
@@ -37,20 +61,18 @@ export class UpdateContractDto {
   resolutionDate?: string;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber()
+  @ToCurrencyAmount()
   contractPrice?: number;
 
   @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => UpdateMeetingDto)
-  meetings?: UpdateMeetingDto[];
+  @Type(() => MeetingDto)
+  meetings?: MeetingDto[];
 
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => UpdateContractDocumentDto)
   contractDocuments?: UpdateContractDocumentDto[];
-
-  @IsOptional() @IsInt() userId?: number;
-  @IsOptional() @IsInt() customerId?: number;
-  @IsOptional() @IsInt() carId?: number;
 }
