@@ -1,4 +1,4 @@
-import { Prisma, CarType, CarStatus } from '@prisma/client';
+import { Prisma, CarType, CarStatus, PrismaClient } from '@prisma/client';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { validate } from 'class-validator';
@@ -29,9 +29,11 @@ export interface CarModelListResponseDto {
 
 export default class CarService {
   private readonly carRepository: CarRepository;
+  private readonly prisma: PrismaClient; // PrismaClient
 
-  constructor(carRepository: CarRepository) {
+  constructor(carRepository: CarRepository, prisma: PrismaClient) {
     this.carRepository = carRepository;
+    this.prisma = prisma;
   }
 
   async createCar(data: CreateCarDTO, companyId: number): Promise<CarResponseDto> {
@@ -421,8 +423,11 @@ export default class CarService {
       return;
     }
     try {
-      const result = await this.carRepository.createMany(batch);
-      console.log(`Batch inserted: ${result.count} records.`);
+      await this.prisma.$transaction(async (tx) => {
+        const carRepositoryInTransaction = new CarRepository(tx);
+        await carRepositoryInTransaction.createMany(batch);
+      });
+      console.log(`Batch inserted: ${batch.length} records.`);
     } catch (dbError: any) {
       console.error('Batch DB insertion failed:', dbError);
       batch.forEach((record) => {

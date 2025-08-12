@@ -1,19 +1,25 @@
-// 차량 타입별 매출 통계를 위한 API 응답용 DTO
-
-import { IsEnum, IsNumber } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional } from 'class-validator';
 import { CarType } from '../../common/enums/car-type.enum';
 
-/**
- * 차량 타입별 매출 정보
- *
- * - carType: 차량 분류 (SUV, SEDAN 등)
- * - amount: 해당 타입 차량들의 **총 매출액**
- *   (※ revenue로 원하면 amount 대신 revenue도 가능!)
- */
 export class SalesByCarTypeDto {
   @IsEnum(CarType)
   carType: CarType;
 
+  // 한글 라벨 사용 중이면 그대로 유지
+  carTypeLabel: CarType;
+
+  // 원(₩) 단위 총액
   @IsNumber()
-  amount: number; // 또는 revenue: number;
+  amount: number;
+
+  // ✅ 프런트 호환용: 일부 컴포넌트가 revenue를 dataKey로 사용
+  @IsNumber()
+  @IsOptional()
+  revenue?: number;
+
+  // ✅ 프런트 현재 구현(Chart.js)이 sales에서도 `count`를 읽음 → 같이 내려줌
+  //   단위는 amount와 동일(원). 프런트 옵션에서 만원 표시 포맷팅.
+  @IsNumber()
+  @IsOptional()
+  count?: number;
 }
