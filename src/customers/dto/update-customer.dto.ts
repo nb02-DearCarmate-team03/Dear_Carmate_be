@@ -11,20 +11,21 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsEnum(Gender)
   @Transform(({ value }) => {
-    // 한글 입력을 Prisma Enum으로 변환
-    const genderMap: Record<string, Gender> = {
-      남성: 'MALE' as Gender,
-      여성: 'FEMALE' as Gender,
-      male: 'MALE' as Gender,
-      female: 'FEMALE' as Gender,
-      MALE: 'MALE' as Gender,
-      FEMALE: 'FEMALE' as Gender,
-    };
-
+    // 한글 및 영문 입력을 Prisma Enum으로 변환
     if (typeof value === 'string') {
-      const mapped =
-        genderMap[value] || genderMap[value.toLowerCase()] || genderMap[value.toUpperCase()];
-      if (mapped) return mapped;
+      const upperValue = value.toUpperCase();
+      switch (upperValue) {
+        case 'MALE':
+        case 'M':
+        case '남성':
+          return Gender.MALE;
+        case 'FEMALE':
+        case 'F':
+        case '여성':
+          return Gender.FEMALE;
+        default:
+          return value;
+      }
     }
     return value;
   })
@@ -38,28 +39,37 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsEnum(AgeGroup)
   @Transform(({ value }) => {
-    // 한글 입력을 Prisma Enum으로 변환
-    const ageGroupMap: Record<string, AgeGroup> = {
-      '10대': 'TEENAGER' as AgeGroup,
-      '20대': 'TWENTIES' as AgeGroup,
-      '30대': 'THIRTIES' as AgeGroup,
-      '40대': 'FORTIES' as AgeGroup,
-      '50대': 'FIFTIES' as AgeGroup,
-      '60대': 'SIXTIES' as AgeGroup,
-      '70대': 'SEVENTIES' as AgeGroup,
-      '80대': 'EIGHTIES' as AgeGroup,
-      TEENAGER: 'TEENAGER' as AgeGroup,
-      TWENTIES: 'TWENTIES' as AgeGroup,
-      THIRTIES: 'THIRTIES' as AgeGroup,
-      FORTIES: 'FORTIES' as AgeGroup,
-      FIFTIES: 'FIFTIES' as AgeGroup,
-      SIXTIES: 'SIXTIES' as AgeGroup,
-      SEVENTIES: 'SEVENTIES' as AgeGroup,
-      EIGHTIES: 'EIGHTIES' as AgeGroup,
-    };
-
+    // 한글 및 영문 입력을 Prisma Enum으로 변환
     if (typeof value === 'string') {
-      return ageGroupMap[value] || value;
+      const upperValue = value.toUpperCase();
+      switch (upperValue) {
+        case 'TEENAGER':
+        case '10대':
+          return AgeGroup.TEENAGER;
+        case 'TWENTIES':
+        case '20대':
+          return AgeGroup.TWENTIES;
+        case 'THIRTIES':
+        case '30대':
+          return AgeGroup.THIRTIES;
+        case 'FORTIES':
+        case '40대':
+          return AgeGroup.FORTIES;
+        case 'FIFTIES':
+        case '50대':
+          return AgeGroup.FIFTIES;
+        case 'SIXTIES':
+        case '60대':
+          return AgeGroup.SIXTIES;
+        case 'SEVENTIES':
+        case '70대':
+          return AgeGroup.SEVENTIES;
+        case 'EIGHTIES':
+        case '80대':
+          return AgeGroup.EIGHTIES;
+        default:
+          return value;
+      }
     }
     return value;
   })
@@ -68,46 +78,64 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsEnum(Region)
   @Transform(({ value }) => {
-    // 한글 입력을 Prisma Enum으로 변환
-    const regionMap: Record<string, Region> = {
-      서울: 'SEOUL' as Region,
-      경기: 'GYEONGGI' as Region,
-      인천: 'INCHEON' as Region,
-      강원: 'GANGWON' as Region,
-      충북: 'CHUNGBUK' as Region,
-      충남: 'CHUNGNAM' as Region,
-      세종: 'SEJONG' as Region,
-      대전: 'DAEJEON' as Region,
-      전북: 'JEONBUK' as Region,
-      전남: 'JEONNAM' as Region,
-      광주: 'GWANGJU' as Region,
-      경북: 'GYEONGBUK' as Region,
-      경남: 'GYEONGNAM' as Region,
-      대구: 'DAEGU' as Region,
-      울산: 'ULSAN' as Region,
-      부산: 'BUSAN' as Region,
-      제주: 'JEJU' as Region,
-      SEOUL: 'SEOUL' as Region,
-      GYEONGGI: 'GYEONGGI' as Region,
-      INCHEON: 'INCHEON' as Region,
-      GANGWON: 'GANGWON' as Region,
-      CHUNGBUK: 'CHUNGBUK' as Region,
-      CHUNGNAM: 'CHUNGNAM' as Region,
-      SEJONG: 'SEJONG' as Region,
-      DAEJEON: 'DAEJEON' as Region,
-      JEONBUK: 'JEONBUK' as Region,
-      JEONNAM: 'JEONNAM' as Region,
-      GWANGJU: 'GWANGJU' as Region,
-      GYEONGBUK: 'GYEONGBUK' as Region,
-      GYEONGNAM: 'GYEONGNAM' as Region,
-      DAEGU: 'DAEGU' as Region,
-      ULSAN: 'ULSAN' as Region,
-      BUSAN: 'BUSAN' as Region,
-      JEJU: 'JEJU' as Region,
-    };
-
+    // 한글 및 영문 입력을 Prisma Enum으로 변환
     if (typeof value === 'string') {
-      return regionMap[value] || value;
+      const upperValue = value.toUpperCase();
+      switch (upperValue) {
+        case 'SEOUL':
+        case '서울':
+          return Region.SEOUL;
+        case 'GYEONGGI':
+        case '경기':
+          return Region.GYEONGGI;
+        case 'INCHEON':
+        case '인천':
+          return Region.INCHEON;
+        case 'GANGWON':
+        case '강원':
+          return Region.GANGWON;
+        case 'CHUNGBUK':
+        case '충북':
+          return Region.CHUNGBUK;
+        case 'CHUNGNAM':
+        case '충남':
+          return Region.CHUNGNAM;
+        case 'SEJONG':
+        case '세종':
+          return Region.SEJONG;
+        case 'DAEJEON':
+        case '대전':
+          return Region.DAEJEON;
+        case 'JEONBUK':
+        case '전북':
+          return Region.JEONBUK;
+        case 'JEONNAM':
+        case '전남':
+          return Region.JEONNAM;
+        case 'GWANGJU':
+        case '광주':
+          return Region.GWANGJU;
+        case 'GYEONGBUK':
+        case '경북':
+          return Region.GYEONGBUK;
+        case 'GYEONGNAM':
+        case '경남':
+          return Region.GYEONGNAM;
+        case 'DAEGU':
+        case '대구':
+          return Region.DAEGU;
+        case 'ULSAN':
+        case '울산':
+          return Region.ULSAN;
+        case 'BUSAN':
+        case '부산':
+          return Region.BUSAN;
+        case 'JEJU':
+        case '제주':
+          return Region.JEJU;
+        default:
+          return value;
+      }
     }
     return value;
   })

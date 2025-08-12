@@ -37,10 +37,17 @@ export class CustomerRepository {
     const where: Prisma.CustomerWhereInput = {
       companyId,
       deletedAt: null,
-      ...(searchBy && {
+      // keyword가 있을 때만 검색 조건 추가
+      ...(keyword && {
         OR: [
-          { name: { contains: searchBy, mode: 'insensitive' } },
-          { email: { contains: searchBy, mode: 'insensitive' } },
+          // searchBy가 지정되지 않았거나 'name'인 경우 이름으로 검색
+          ...(!searchBy || searchBy === 'name'
+            ? [{ name: { contains: keyword, mode: 'insensitive' as const } }]
+            : []),
+          // searchBy가 지정되지 않았거나 'email'인 경우 이메일로 검색
+          ...(!searchBy || searchBy === 'email'
+            ? [{ email: { contains: keyword, mode: 'insensitive' as const } }]
+            : []),
         ],
       }),
     };
