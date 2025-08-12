@@ -42,7 +42,7 @@ model User {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
-  company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contracts    Contract[]
   uploadedDocs ContractDocument[] @relation("UploadedDocuments")
   uploads      Upload[]
@@ -136,7 +136,7 @@ model Contract {
 
 model ContractDocument {
   id           Int       @id @default(autoincrement())
-  contractId   Int       @map("contract_id")
+  contractId   Int?      @map("contract_id")
   documentName String    @map("document_name") @db.VarChar(255)
   fileName     String    @map("file_name") @db.VarChar(255)
   filePath     String    @map("file_path") @db.VarChar(500)
@@ -146,8 +146,8 @@ model ContractDocument {
   createdAt    DateTime  @default(now()) @map("created_at")
   deletedAt    DateTime? @map("deleted_at")
 
-  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  uploader User     @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  uploader User      @relation("UploadedDocuments", fields: [uploadedBy], references: [id])
 
   @@index([contractId])
   @@index([deletedAt])
@@ -177,7 +177,7 @@ model Upload {
   companyId        Int          @map("company_id")
   userId           Int          @map("user_id")
   fileName         String       @map("file_name") @db.VarChar(255)
-  fileUrl          String       @map("file_url") @db.VarChar(500) 
+  fileUrl          String       @map("file_url") @db.VarChar(500)
   fileType         UploadType   @map("upload_type")
   status           UploadStatus @default(PENDING)
   totalRecords     Int          @default(0) @map("total_records")
@@ -195,7 +195,6 @@ model Upload {
   @@index([createdAt])
   @@map("uploads")
 }
-
 
 model Meeting {
   id         Int      @id @default(autoincrement())
