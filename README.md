@@ -129,14 +129,17 @@
 ├─ .prettierrc.json
 ├─ .vscode
 │  └─ setting.json
+├─ @types
+│  └─ express
+│     └─ index.d.ts
 ├─ README.md
 ├─ package-lock.json
 ├─ package.json
 ├─ prisma
-│  └─ migrations
-│  └─ schema.prisma
-│  └─ mock.ts
-│  └─ seed.ts
+│  ├─ migrations
+│  ├─ mock.ts
+│  ├─ schema.prisma
+│  └─ seed.ts
 ├─ src
 │  ├─ @types
 │  │  └─ express
@@ -144,7 +147,6 @@
 │  ├─ app.ts
 │  ├─ auth
 │  │  ├─ auth.routes.ts
-│  │  ├─ auth.ts
 │  │  ├─ controller.ts
 │  │  ├─ dto
 │  │  │  └─ login.dto.ts
@@ -156,15 +158,16 @@
 │  │  ├─ cars.routes.ts
 │  │  ├─ controller.ts
 │  │  ├─ dto
-│  │  │  └─ create-car.dto.ts
-│  │  │  └─ get-car.dto.ts
-│  │  │  └─ update-car.dto.ts
-│  │  │  └─ upload-car.dto.ts
+│  │  │  ├─ create-car.dto.ts
+│  │  │  ├─ get-car.dto.ts
+│  │  │  ├─ update-car.dto.ts
+│  │  │  └─ upload-car.dto.ts
 │  │  ├─ repository.ts
 │  │  └─ service.ts
 │  ├─ common
 │  │  ├─ constants
 │  │  │  └─ constants.ts
+│  │  ├─ email.service.ts
 │  │  ├─ enums
 │  │  │  ├─ age-group.enum.ts
 │  │  │  ├─ car-status.enum.ts
@@ -172,23 +175,21 @@
 │  │  │  ├─ contract-status.enum.ts
 │  │  │  ├─ gender.enum.ts
 │  │  │  └─ region.enum.ts
-│  │  ├─ errors
-│  │  │  ├─ app-error.ts
-│  │  │  ├─ bad-request-error.ts
-│  │  │  ├─ conflict-error.ts
-│  │  │  ├─ forbidden-error.ts
-│  │  │  ├─ not-found-error.ts
-│  │  │  └─ unauthorized-error.ts
+│  │  ├─ errors
+│  │  │  ├─ app-error.ts
+│  │  │  ├─ bad-request-error.ts
+│  │  │  ├─ conflict-error.ts
+│  │  │  ├─ forbidden-error.ts
+│  │  │  ├─ not-found-error.ts
+│  │  │  └─ unauthorized-error.ts
 │  │  ├─ prisma
 │  │  │  └─ client.ts
 │  │  └─ utils
-│  │     ├─ custom-errors.ts
+│  │     ├─ car.converter.ts
+│  │     ├─ contract.converter.ts
+│  │     ├─ customer.converter.ts
+│  │     ├─ firebase-admin.ts
 │  │     └─ validate.dto.ts
-│  │     └─ car.converter.ts
-│  │     └─ contract.converter.ts
-│  │     └─ csv-downloader.ts
-│  │     └─ customer.converter.ts
-│  │     └─ firebase-admin.ts
 │  ├─ companies
 │  │  ├─ companies.routes.ts
 │  │  ├─ controller.ts
@@ -212,14 +213,14 @@
 │  ├─ contracts
 │  │  ├─ contracts.routes.ts
 │  │  ├─ controller.ts
+│  │  ├─ contract.mapper.ts
 │  │  ├─ dto
 │  │  │  ├─ create-contract.dto.ts
 │  │  │  ├─ meeting.dto.ts
-│  │  │  └─ update-contract.dto.ts
-│  │  │  └─ update-meeting.dto.ts
-│  │  ├─ contract.mapper.ts
+│  │  │  ├─ update-contract-document.dto.ts
+│  │  │  ├─ update-contract.dto.ts
+│  │  │  └─ update-meeting.dto.ts
 │  │  ├─ repository.ts
-│  │  ├─ schema.ts
 │  │  └─ service.ts
 │  ├─ customers
 │  │  ├─ controller.ts
@@ -241,18 +242,20 @@
 │  │  │  └─ summary-response.dto.ts
 │  │  ├─ repository.ts
 │  │  └─ service.ts
+│  ├─ images
+│  │  ├─ controller.ts
+│  │  ├─ image.routes.ts
+│  │  ├─ repository.ts
+│  │  └─ service.ts
 │  ├─ index.routes.ts
 │  ├─ main.ts
 │  ├─ middlewares
 │  │  ├─ auth.middleware.ts
-│  │  └─ error.middleware.ts
-│  ├─ uploads
-│  │  ├─ controller.ts
-│  │  ├─ dto
-│  │  │  └─ upload.dto.ts
-│  │  ├─ repository.ts
-│  │  ├─ service.ts
-│  │  └─ uploads.routes.ts
+│  │  ├─ csv-upload.middleware.ts
+│  │  ├─ error.middleware.ts
+│  │  ├─ image-upload.middleware.ts
+│  │  ├─ passport.middlewares.ts
+│  │  └─ upload.middleware.ts
 │  └─ users
 │     ├─ controller.ts
 │     ├─ dto
@@ -261,6 +264,8 @@
 │     ├─ repository.ts
 │     ├─ service.ts
 │     └─ users.routes.ts
+├─ swagger-options.ts
+├─ swagger.yaml
 └─ tsconfig.json
 ```
 
