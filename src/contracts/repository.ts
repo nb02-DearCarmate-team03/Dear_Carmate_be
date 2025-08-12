@@ -4,6 +4,11 @@ import { UpdateContractDto } from './dto/update-contract.dto';
 import { BadRequestError } from '../common/errors/bad-request-error';
 
 // 공통 include
+const isNonEmptyText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+const toDateStrict = (value: string | number | Date): Date => new Date(value as any);
+
 const contractInclude = {
   user: { select: { id: true, name: true } },
   customer: { select: { id: true, name: true } },
@@ -110,15 +115,21 @@ export default class ContractRepository {
         ...scalarFields,
         contractDate: toDateOrUndefined(contractDate),
         meetings:
-          meetings && meetings.length > 0
+          Array.isArray(meetings) && meetings.length > 0
             ? {
-                create: meetings.map((meeting) => ({
-                  date: new Date(meeting.date),
-                  alarms:
-                    (meeting.alarms?.length ?? 0) > 0
-                      ? { create: meeting.alarms!.map((t) => ({ time: new Date(t) })) }
-                      : undefined,
-                })),
+                create: meetings
+                  .filter((m) => isNonEmptyText((m as any)?.date)) // date가 있는 항목만 생성
+                  .map((meeting) => ({
+                    date: toDateStrict(meeting.date), // string 보장됨
+                    alarms:
+                      Array.isArray(meeting.alarms) && meeting.alarms.length > 0
+                        ? {
+                            create: meeting.alarms
+                              .filter(isNonEmptyText) // 문자열만 허용
+                              .map((text) => ({ time: toDateStrict(text) })),
+                          }
+                        : undefined,
+                  })),
               }
             : undefined,
       },

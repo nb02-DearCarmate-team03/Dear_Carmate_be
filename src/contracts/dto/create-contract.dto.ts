@@ -9,18 +9,26 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ContractStatus, Possession } from '@prisma/client';
+import { ToIdentifier, ToCurrencyAmount } from '../../common/utils/contract.converter';
 import { MeetingDto } from './meeting.dto';
 
 export class CreateContractDto {
+  @IsOptional()
   @IsInt()
+  @ToIdentifier()
+  userId?: number;
+
+  @IsInt()
+  @ToIdentifier()
   carId: number;
 
   @IsInt()
+  @ToIdentifier()
   customerId: number;
 
   @IsOptional()
-  @Type(() => Number)
   @IsNumber()
+  @ToCurrencyAmount()
   contractPrice?: number;
 
   @IsOptional()
