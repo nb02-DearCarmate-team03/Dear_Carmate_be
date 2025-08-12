@@ -226,8 +226,8 @@ const createContractDocumentsRouter = (prisma: PrismaClient) => {
   router.post(
     '/upload',
     isAuthenticated,
-    upload.array('files', 10), // 최대 10개 파일
-    validateDto(UploadContractDocumentDto),
+    upload.single('file'), // 최대 10개 파일
+
     contractDocumentsController.uploadContractDocuments,
   );
 

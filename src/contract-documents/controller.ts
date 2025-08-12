@@ -43,10 +43,10 @@ export default class ContractDocumentsController {
   ): Promise<void> => {
     try {
       const { companyId, id: userId } = req.user!;
-      const { contractId } = req.body as UploadContractDocumentDto;
-      const files = req.files as Express.Multer.File[];
+      // const { contractId } = req.body as UploadContractDocumentDto;
+      const file = req.file as Express.Multer.File;
 
-      if (!files || files.length === 0) {
+      if (!file || file.size === 0) {
         res.status(400).json({ message: '업로드할 파일이 없습니다.' });
         return;
       }
@@ -54,8 +54,7 @@ export default class ContractDocumentsController {
       const result = await this.contractDocumentsService.uploadContractDocuments(
         companyId,
         userId,
-        contractId,
-        files,
+        file,
       );
 
       res.status(200).json({

@@ -57,7 +57,7 @@ interface ContractForDraftItem {
 
 export default class ContractDocumentsService {
   private readonly emailService: EmailService;
-  private readonly allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+  private readonly allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.csv'];
   private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
   private readonly maxFileCount = 10;
 
@@ -104,50 +104,28 @@ export default class ContractDocumentsService {
   async uploadContractDocuments(
     companyId: number,
     userId: number,
-    contractId: number,
-    files: Express.Multer.File[],
+    file: Express.Multer.File,
   ): Promise<{ contractDocumentId: number }> {
     // 업로드된 파일 경로 추적을 위한 배열
     const uploadedFilePaths: string[] = [];
-    let savedDocuments: ContractDocument[] = [];
+    let savedDocument: ContractDocument | null = null;
 
     try {
       // 파일 유효성 검증
-      this.validateFiles(files);
-
-      // 계약 존재 여부 확인
-      const contract = await this.contractDocumentsRepository.findContractById(
-        contractId,
-        companyId,
-      );
-      if (!contract) {
-        throw new NotFoundError('계약을 찾을 수 없습니다.');
-      }
-
-      // 기존 문서 개수 확인
-      const existingCount =
-        await this.contractDocumentsRepository.countDocumentsByContract(contractId);
-      if (existingCount + files.length > this.maxFileCount) {
-        throw new BadRequestError(`계약서는 최대 ${this.maxFileCount}개까지 업로드 가능합니다.`);
-      }
+      this.validateFiles([file]);
 
       // 파일이 실제로 저장되었는지 확인
-      for (const file of files) {
-        try {
-          await fs.access(file.path);
-          uploadedFilePaths.push(file.path);
-        } catch (error) {
-          throw new Error(`파일 저장 실패: ${file.originalname}`);
-        }
+
+      try {
+        await fs.access(file.path);
+        uploadedFilePaths.push(file.path);
+      } catch (error) {
+        throw new Error(`파일 저장 실패: ${file.originalname}`);
       }
 
       // 트랜잭션으로 문서 저장
       try {
-        savedDocuments = await this.contractDocumentsRepository.createContractDocuments(
-          contractId,
-          userId,
-          files,
-        );
+        savedDocument = await this.contractDocumentsRepository.createContractDocument(userId, file);
       } catch (dbError) {
         // DB 저장 실패 시 파일 시스템에서 파일 삭제
         await this.cleanupFiles(uploadedFilePaths);
@@ -155,28 +133,28 @@ export default class ContractDocumentsService {
       }
 
       // 저장된 문서가 있는지 확인
-      if (!savedDocuments || savedDocuments.length === 0) {
+      if (!savedDocument) {
         await this.cleanupFiles(uploadedFilePaths);
         throw new Error('계약 문서 저장에 실패했습니다.');
       }
 
-      const firstDocument = savedDocuments[0];
-      if (!firstDocument) {
-        await this.cleanupFiles(uploadedFilePaths);
-        throw new Error('계약 문서 저장에 실패했습니다.');
-      }
+      // const firstDocument = savedDocuments[0];
+      // if (!firstDocument) {
+      //   await this.cleanupFiles(uploadedFilePaths);
+      //   throw new Error('계약 문서 저장에 실패했습니다.');
+      //
 
-      // 이메일 발송 (실패해도 롤백하지 않음 - 이메일은 부가 기능)
-      if (contract.customer?.email) {
-        try {
-          await this.sendContractEmail(contract, files);
-        } catch (emailError) {
-          console.error('이메일 발송 실패:', emailError);
-          // 이메일 실패는 무시하고 진행
-        }
-      }
+      // // 이메일 발송 (실패해도 롤백하지 않음 - 이메일은 부가 기능)
+      // if (contract.customer?.email) {
+      //   try {
+      //     await this.sendContractEmail(contract, files);
+      //   } catch (emailError) {
+      //     console.error('이메일 발송 실패:', emailError);
+      //     // 이메일 실패는 무시하고 진행
+      //   }
+      // }
 
-      return { contractDocumentId: firstDocument.id };
+      return { contractDocumentId: savedDocument.id };
     } catch (error) {
       // 오류 발생 시 업로드된 파일들 정리
       if (uploadedFilePaths.length > 0) {
@@ -184,14 +162,14 @@ export default class ContractDocumentsService {
       }
 
       // 만약 DB에 일부 저장되었다면 삭제 처리
-      if (savedDocuments.length > 0) {
-        const documentIds = savedDocuments.map((doc) => doc.id);
-        try {
-          await this.contractDocumentsRepository.deleteDocuments(documentIds);
-        } catch (rollbackError) {
-          console.error('데이터베이스 롤백 실패:', rollbackError);
-        }
-      }
+      // if (savedDocuments.length > 0) {
+      //   const documentIds = savedDocuments.map((doc) => doc.id);
+      //   try {
+      //     await this.contractDocumentsRepository.deleteDocuments(documentIds);
+      //   } catch (rollbackError) {
+      //     console.error('데이터베이스 롤백 실패:', rollbackError);
+      //   }
+      // }
 
       throw error;
     }
@@ -331,6 +309,9 @@ export default class ContractDocumentsService {
 
     for (const doc of documents) {
       const { contractId } = doc;
+      if (!contractId) {
+        continue; // 계약 ID가 없는 문서는 무시
+      }
       if (!grouped.has(contractId)) {
         grouped.set(contractId, []);
       }
