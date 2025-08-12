@@ -7,7 +7,6 @@ import createCustomerRoutes from './customers/customers.routes';
 import { dashboardRouter } from './dashboard/dashboard.routes';
 import carsRouter from './cars/cars.routes';
 import contractRouter from './contracts/contracts.routes';
-import createCsvUploadRouter from './uploads/router';
 import prisma from './common/prisma/client';
 import createContractDocumentsRouter from './contract-documents/contract-documents.routes';
 import uploadRouter from './images/image.routes';

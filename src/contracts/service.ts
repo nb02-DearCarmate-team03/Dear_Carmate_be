@@ -3,6 +3,7 @@ import ContractRepository, { ContractSearchBy, ContractWithRelations } from './r
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { mapContract } from './contract.mapper';
+import { refreshAggregatesAfterContractChange } from './contract.aggregates';
 
 type RequestUser = {
   id: number;
@@ -26,12 +27,17 @@ const STATUS_KEY: Record<
 
 export class ContractService {
   private readonly repository: ContractRepository;
+  private readonly prisma?: PrismaClient;
 
   constructor(prismaOrRepository: PrismaClient | ContractRepository) {
     this.repository =
       prismaOrRepository instanceof ContractRepository
         ? prismaOrRepository
         : new ContractRepository(prismaOrRepository);
+
+    if (!(prismaOrRepository instanceof ContractRepository)) {
+      this.prisma = prismaOrRepository;
+    }
   }
 
   // 계약 목록 조회(단순)
@@ -177,6 +183,29 @@ export class ContractService {
     dto: CreateContractDto & { customerId: number; carId: number; userId: number },
   ) {
     const userId = dto.userId ?? user.id;
+
+    if (this.prisma) {
+      return this.prisma.$transaction(async (tx) => {
+        const repo = new ContractRepository(tx);
+        const created = await repo.createContract({
+          ...dto,
+          userId,
+          companyId: user.companyId,
+        });
+
+        // 계약 생성 직후 요약/상태 갱신
+        await refreshAggregatesAfterContractChange(
+          tx,
+          user.companyId,
+          created.customer?.id ?? null,
+          created.car?.id ?? null,
+        );
+
+        return created;
+      });
+    }
+
+    // (테스트 등 Prisma 미주입 경로) – 요약 갱신은 스킵되니 가능하면 위 경로 사용 권장
     return this.repository.createContract({
       ...dto,
       userId,
@@ -185,12 +214,45 @@ export class ContractService {
   }
 
   // 계약 수정
-  async updateContract(_user: RequestUser, contractId: number, updateData: UpdateContractDto) {
+  async updateContract(user: RequestUser, contractId: number, updateData: UpdateContractDto) {
+    if (this.prisma) {
+      return this.prisma.$transaction(async (tx) => {
+        const repo = new ContractRepository(tx);
+        const updated = await repo.updateContract(contractId, updateData);
+
+        await refreshAggregatesAfterContractChange(
+          tx,
+          user.companyId,
+          updated.customer?.id ?? null,
+          updated.car?.id ?? null,
+        );
+        return updated;
+      });
+    }
+
     return this.repository.updateContract(contractId, updateData);
   }
 
   // 계약 삭제
-  async deleteContract(_user: RequestUser, contractId: number) {
+  async deleteContract(user: RequestUser, contractId: number) {
+    if (this.prisma) {
+      await this.prisma.$transaction(async (tx) => {
+        const repo = new ContractRepository(tx);
+        // 삭제 전에 참조 ID 확보
+        const before = await repo.findContractById(contractId);
+
+        await repo.deleteContract(contractId);
+
+        await refreshAggregatesAfterContractChange(
+          tx,
+          user.companyId,
+          before?.customer?.id ?? null,
+          before?.car?.id ?? null,
+        );
+      });
+      return;
+    }
+
     await this.repository.deleteContract(contractId);
   }
 

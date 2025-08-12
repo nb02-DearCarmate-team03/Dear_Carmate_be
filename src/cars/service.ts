@@ -1,4 +1,4 @@
-import { Prisma, CarType, CarStatus } from '@prisma/client';
+import { Prisma, CarType, CarStatus, PrismaClient } from '@prisma/client';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { validate } from 'class-validator';
@@ -29,6 +29,7 @@ export interface CarModelListResponseDto {
 
 export default class CarService {
   private readonly carRepository: CarRepository;
+  private readonly prisma?: PrismaClient;
 
   constructor(carRepository: CarRepository) {
     this.carRepository = carRepository;

@@ -1,4 +1,9 @@
-import { Prisma, PrismaClient, ContractStatus as PrismaContractStatus } from '@prisma/client';
+import {
+  Prisma,
+  PrismaClient,
+  ContractStatus as PrismaContractStatus,
+  CarStatus,
+} from '@prisma/client';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { BadRequestError } from '../common/errors/bad-request-error';
@@ -32,6 +37,8 @@ const contractInclude = {
   meetings: { include: { alarms: true } },
   contractDocuments: { select: { id: true, fileName: true } },
 } satisfies Prisma.ContractInclude;
+
+export type ItemForDropdown = { id: number; name: string };
 
 export type ContractWithRelations = Prisma.ContractGetPayload<{
   include: typeof contractInclude;
@@ -164,7 +171,7 @@ export default class ContractRepository {
 
     return this.prisma.contract.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       skip: params.skip,
       take: params.take,
       include: contractInclude,
@@ -222,7 +229,6 @@ export default class ContractRepository {
       const meetingsToCreate = (updateData.meetings ?? [])
         .filter(hasNonEmptyDateField) // ✅ date 있는 항목만
         .map((meeting) => ({
-          // ❌ (meeting: UpdateMeetingDto) 표기 금지
           date: convertToDate(meeting.date),
           alarms:
             Array.isArray(meeting.alarms) && meeting.alarms.length > 0
@@ -284,18 +290,28 @@ export default class ContractRepository {
   // 차량 선택 목록 조회
   async findCarsByCompanyId(companyId: number) {
     return this.prisma.car.findMany({
-      where: { companyId },
-      select: { id: true, model: true, carNumber: true },
-      orderBy: { id: 'asc' },
+      where: {
+        companyId,
+        status: CarStatus.POSSESSION,
+      },
+      select: {
+        id: true,
+        model: true,
+        carNumber: true,
+      },
+      orderBy: [{ model: 'asc' }, { carNumber: 'asc' }],
     });
   }
 
   // 고객 선택 목록 조회
   async findCustomersByCompanyId(companyId: number) {
     return this.prisma.customer.findMany({
-      where: { companyId },
+      where: {
+        companyId,
+        email: { not: '' },
+      },
       select: { id: true, name: true, email: true },
-      orderBy: { id: 'asc' },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });
   }
 

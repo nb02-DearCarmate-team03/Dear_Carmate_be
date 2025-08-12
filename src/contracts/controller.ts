@@ -32,10 +32,16 @@ export default class ContractController {
         grouped?: string;
       };
 
-      const pageNum = page ? Number(page) : undefined;
-      const sizeNum = pageSize ? Number(pageSize) : undefined;
+      const toNum = (v?: string) => {
+        if (v == null) return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? n : undefined;
+      };
 
-      const wantsGrouped = grouped === 'true' || (!pageNum && !sizeNum);
+      const pageNum = toNum(page);
+      const sizeNum = toNum(pageSize);
+
+      const wantsGrouped = grouped === undefined || grouped === 'true';
 
       if (wantsGrouped) {
         const result = await this.contractService.getContractsGroupedPage(user, {
