@@ -104,8 +104,8 @@ export class CustomerService {
       companyId,
       page,
       pageSize,
-      keyword,
       searchBy,
+      keyword,
     );
 
     return {
