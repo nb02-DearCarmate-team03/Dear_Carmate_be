@@ -213,4 +213,57 @@ export default class ContractDocumentsRepository {
       },
     });
   }
+  // ✨ 새로운 메서드들: 계약 API 통합용
+
+  /**
+   * 계약서들을 특정 계약에 연결
+   */
+  async attachDocumentsToContract(contractId: number, documentIds: number[]): Promise<void> {
+    await this.prisma.contractDocument.updateMany({
+      where: {
+        id: {
+          in: documentIds,
+        },
+      },
+      data: {
+        contractId,
+      },
+    });
+  }
+
+  /**
+   * 계약서 파일명 업데이트
+   */
+  async updateDocumentFileName(documentId: number, fileName: string): Promise<void> {
+    await this.prisma.contractDocument.update({
+      where: {
+        id: documentId,
+      },
+      data: {
+        fileName,
+      },
+    });
+  }
+
+  /**
+   * 특정 계약에 속한 계약서들 조회
+   */
+  async findDocumentsByContractId(
+    contractId: number,
+    companyId: number,
+  ): Promise<ContractDocument[]> {
+    return this.prisma.contractDocument.findMany({
+      where: {
+        contractId,
+        deletedAt: null,
+        contract: {
+          companyId,
+          deletedAt: null,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }
