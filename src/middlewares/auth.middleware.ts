@@ -46,9 +46,11 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
       return;
     }
 
-    const { id, email, name, isAdmin, companyId } = decoded as User;
-    if (id && email && name) {
-      req.user = { id, email, name, isAdmin, companyId };
+    const { email, isAdmin } = decoded;
+    const id = decoded.sub;
+
+    if (id && email) {
+      req.user = { id: Number(id), email, name: '', isAdmin, companyId: 0 };
       next();
     } else {
       res.status(401).json({ message: '유효하지 않은 토큰입니다.' });
