@@ -29,7 +29,7 @@ export interface CarModelListResponseDto {
 
 export default class CarService {
   private readonly carRepository: CarRepository;
-  private readonly prisma: PrismaClient; // PrismaClient
+  private readonly prisma?: PrismaClient;
 
   constructor(carRepository: CarRepository) {
     this.carRepository = carRepository;
@@ -422,8 +422,11 @@ export default class CarService {
       return;
     }
     try {
-      const result = await this.carRepository.createMany(batch);
-      console.log(`Batch inserted: ${result.count} records.`);
+      await this.prisma.$transaction(async (tx) => {
+        const carRepositoryInTransaction = new CarRepository(tx);
+        await carRepositoryInTransaction.createMany(batch);
+      });
+      console.log(`Batch inserted: ${batch.length} records.`);
     } catch (dbError: any) {
       console.error('Batch DB insertion failed:', dbError);
       batch.forEach((record) => {

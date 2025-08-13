@@ -12,9 +12,9 @@ export async function refreshAggregatesAfterContractChange(
   customerContractCount: number | null;
   nextCarStatus: CarStatus | null;
 }> {
-  // 1) 회사 전체 계약 수 (원하면 완료만 카운트로 변경 가능)
+  // 1) 회사 전체 계약 수 (필요하면 성공만 카운트로 바꿔도 됨)
   const totalContractCount = await tx.contract.count({ where: { companyId } });
-  // 완료만으로 바꾸고 싶으면 위 줄을 주석처리하고 아래로 교체:
+  // 성공만 집계하려면 아래로 교체:
   // const totalContractCount = await tx.contract.count({
   //   where: { companyId, status: PrismaContractStatus.CONTRACT_SUCCESSFUL },
   // });
@@ -33,6 +33,7 @@ export async function refreshAggregatesAfterContractChange(
       }),
     ),
   );
+
   const revenueByCarType: Record<string, number> = {};
   carTypes.forEach((type, idx) => {
     const sum = Number(aggregates[idx]?._sum.contractPrice ?? 0);
@@ -48,7 +49,7 @@ export async function refreshAggregatesAfterContractChange(
         companyId,
         customerId,
         status: PrismaContractStatus.CONTRACT_SUCCESSFUL,
-        deletedAt: null, // ← 소프트 삭제 제외(있다면)
+        deletedAt: null, // 소프트 삭제 제외
       },
     });
 
@@ -58,7 +59,7 @@ export async function refreshAggregatesAfterContractChange(
     });
   }
 
-  // 4) 차량 상태 재계산
+  // 4) 차량 상태 재계산 후 반영
   let nextCarStatus: CarStatus | null = null;
   if (typeof carId === 'number') {
     const successfulCount = await tx.contract.count({

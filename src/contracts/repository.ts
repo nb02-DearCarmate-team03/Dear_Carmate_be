@@ -104,6 +104,8 @@ const contractInclude = {
   contractDocuments: { select: { id: true, fileName: true } },
 };
 
+export type ItemForDropdown = { id: number; name: string };
+
 export type ContractWithRelations = Prisma.ContractGetPayload<{
   include: typeof contractInclude;
 }>;
@@ -410,7 +412,7 @@ export default class ContractRepository {
   /* 계약용 고객/사용자 선택 목록 */
   async findCustomersByCompanyId(companyId: number) {
     return this.prisma.customer.findMany({
-      where: { companyId, deletedAt: null },
+      where: { companyId, deletedAt: null, email: { not: '' } },
       select: { id: true, name: true, email: true },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
     });

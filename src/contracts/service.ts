@@ -1,6 +1,5 @@
-// src/contracts/service.ts
-import { Prisma, PrismaClient, ContractStatus as PrismaContractStatus } from '@prisma/client';
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { PrismaClient, Prisma, ContractStatus as PrismaContractStatus } from '@prisma/client';
 import ContractRepository, { ContractSearchBy, ContractWithRelations } from './repository';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
@@ -30,53 +29,38 @@ const STATUS_KEY: Record<
   CONTRACT_FAILED: 'contractFailed',
 };
 
-// 숫자 변환 유틸 (문자/Decimal 포함)
-function toNumberOrUndefined(input: unknown): number | undefined {
-  if (input === null || input === undefined || input === '') return undefined;
-  if (typeof input === 'number') return Number.isFinite(input) ? input : undefined;
-
-  const maybeDecimal = input as any;
-  if (maybeDecimal && typeof maybeDecimal.toNumber === 'function') {
-    const n = maybeDecimal.toNumber();
-    return Number.isFinite(n) ? n : undefined;
-  }
-
-  const n = Number(String(input).replace(/[^\d.-]/g, ''));
-  return Number.isFinite(n) ? n : undefined;
-}
-
 export class ContractService {
-  private readonly prisma: PrismaClient;
   private readonly repository: ContractRepository;
+  private readonly prisma?: PrismaClient;
 
-  constructor(prisma: PrismaClient) {
-    this.prisma = prisma;
-    this.repository = new ContractRepository(prisma);
+  constructor(prismaOrRepository: PrismaClient | ContractRepository) {
+    this.repository =
+      prismaOrRepository instanceof ContractRepository
+        ? prismaOrRepository
+        : new ContractRepository(prismaOrRepository);
+
+    if (!(prismaOrRepository instanceof ContractRepository)) {
+      this.prisma = prismaOrRepository;
+    }
   }
 
   /** 담당자(등록자)만 수정/삭제 가능 */
   private async assertCanModify(user: RequestUser, contractId: number): Promise<void> {
-    const userId = Number(user?.id);
-    const companyId = Number(user?.companyId);
-    if (!userId || !companyId) {
-      const err: any = new Error('인증 정보가 없습니다.');
-      err.statusCode = 403;
-      err.code = 'AUTH_REQUIRED';
-      throw err;
-    }
     const found = await this.repository.findContractById(contractId);
-    if (!found || Number(found.companyId) !== companyId) {
+    if (!found || Number(found.companyId) !== Number(user.companyId)) {
       throw new NotFoundError('계약을 찾을 수 없습니다.');
     }
-    if (Number(found.userId) !== userId) {
-      const err: any = new Error('담당자만 수정이 가능합니다');
-      err.statusCode = 403;
-      err.code = 'FORBIDDEN_ONLY_OWNER';
-      throw err;
+    if (Number(found.userId) !== Number(user.id)) {
+      const error: any = new Error('담당자만 수정이 가능합니다');
+      error.statusCode = 403;
+      error.code = 'FORBIDDEN_ONLY_OWNER';
+      throw error;
     }
   }
 
-  // 단순 목록
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 조회
+  // ──────────────────────────────────────────────────────────────────────────────
   async getContracts(
     user: RequestUser,
     filters: { searchBy?: ContractSearchBy; keyword?: string },
@@ -89,7 +73,6 @@ export class ContractService {
     return rows.map(mapContract);
   }
 
-  // 페이지 목록
   async getContractsPage(
     user: RequestUser,
     params: { searchBy?: ContractSearchBy; keyword?: string; page?: number; pageSize?: number },
@@ -103,7 +86,7 @@ export class ContractService {
     const pageSize = Math.min(Math.max(1, params.pageSize ?? 10), 100);
     const skip = (page - 1) * pageSize;
 
-    const [rows, total] = await Promise.all([
+    const [rows, totalItemCount] = await Promise.all([
       this.repository.findContracts({
         companyId: user.companyId,
         searchBy: params.searchBy,
@@ -120,13 +103,12 @@ export class ContractService {
 
     return {
       currentPage: page,
-      totalPages: Math.ceil(total / pageSize),
-      totalItemCount: total,
+      totalPages: Math.ceil(totalItemCount / pageSize),
+      totalItemCount,
       data: rows.map(mapContract),
     };
   }
 
-  // 상태별 그룹 + 페이지 요약
   async getContractsGroupedPage(
     user: RequestUser,
     params: { searchBy?: ContractSearchBy; keyword?: string; page?: number; pageSize?: number },
@@ -177,7 +159,10 @@ export class ContractService {
       }),
     ]);
 
-    const [total, ...rest] = await Promise.all([totalPromise, ...perStatusPromises]);
+    const [totalItemCount, ...countsAndRows] = await Promise.all([
+      totalPromise,
+      ...perStatusPromises,
+    ]);
 
     const grouped = {
       carInspection: { totalItemCount: 0, data: [] as ReturnType<typeof mapContract>[] },
@@ -188,121 +173,202 @@ export class ContractService {
     };
 
     statuses.forEach((status, idx) => {
-      const count = rest[idx * 2] as number;
-      const rows = rest[idx * 2 + 1] as ContractWithRelations[];
+      const count = countsAndRows[idx * 2] as number;
+      const rows = countsAndRows[idx * 2 + 1] as ContractWithRelations[];
       const key = STATUS_KEY[status];
       grouped[key] = { totalItemCount: count, data: rows.map(mapContract) };
     });
 
     return {
       currentPage: page,
-      totalPages: Math.ceil(total / pageSize),
-      totalItemCount: total,
+      totalPages: Math.ceil(totalItemCount / pageSize),
+      totalItemCount,
       data: grouped,
     };
   }
 
-  // 단건
   async getContractById(contractId: number) {
     return this.repository.findContractById(contractId);
   }
 
-  // 등록: 차량 가격 자동 반영 + 집계/상태 파생값 갱신
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 생성/수정/삭제
+  // ──────────────────────────────────────────────────────────────────────────────
+
+  /** 계약 등록 (가격/상태 계산은 Repository.createContract 내부 처리) */
   async createContract(
-    createData: CreateContractDto & {
-      userId: number;
-      customerId: number;
-      carId: number;
-      companyId: number;
-    },
-  ): Promise<ContractWithRelations> {
-    // 차량 가격 조회
-    const car = await this.prisma.car.findFirst({
-      where: { id: createData.carId, companyId: createData.companyId },
-      select: { id: true, price: true },
-    });
-
-    const requestPrice = toNumberOrUndefined((createData as any).contractPrice);
-    const carPrice = toNumberOrUndefined((car as any)?.price);
-    const finalContractPrice = requestPrice ?? carPrice ?? undefined;
-
-    const created = await this.repository.createContract({
-      ...createData,
-      contractPrice: finalContractPrice,
-    });
-
-    // 생성 후 집계/상태 갱신
-    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await refreshAggregatesAfterContractChange(
-        tx,
-        createData.companyId,
-        (created as any).customerId ?? created.customer?.id ?? null,
-        (created as any).carId ?? created.car?.id ?? null,
-      );
-    });
-
-    return created;
-  }
-
-  // 수정: 담당자만, 수정 후 집계 갱신 (userId 불변은 repository에서 보장)
-  async updateContract(
     user: RequestUser,
-    contractId: number,
-    updateData: UpdateContractDto,
-  ): Promise<ContractWithRelations> {
-    await this.assertCanModify(user, contractId);
+    createPayload: CreateContractDto & { customerId: number; carId: number; userId: number },
+  ) {
+    const finalUserId = createPayload.userId ?? user.id;
 
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const repo = new ContractRepository(tx);
-      const updated = await repo.updateContract(contractId, updateData);
+    if (this.prisma) {
+      return this.prisma.$transaction(async (tx) => {
+        const repo = new ContractRepository(tx);
+        const created = await repo.createContract({
+          ...createPayload,
+          userId: finalUserId,
+          companyId: user.companyId,
+        });
 
-      await refreshAggregatesAfterContractChange(
-        tx,
-        user.companyId,
-        updated.customer?.id ?? null,
-        updated.car?.id ?? null,
-      );
+        await refreshAggregatesAfterContractChange(
+          tx,
+          user.companyId,
+          created.customer?.id ?? null,
+          created.car?.id ?? null,
+        );
 
-      return updated;
+        return created;
+      });
+    }
+
+    // (테스트 등 Prisma 미주입 경로)
+    return this.repository.createContract({
+      ...createPayload,
+      userId: finalUserId,
+      companyId: user.companyId,
     });
   }
 
-  // 삭제: 담당자만, 삭제 후 집계 갱신
-  async deleteContract(user: RequestUser, contractId: number): Promise<void> {
+  /** 계약 수정 (담당자 한정, 문서 연결/파일명 변경 포함, 집계 갱신) */
+  async updateContract(user: RequestUser, contractId: number, updatePayload: UpdateContractDto) {
     await this.assertCanModify(user, contractId);
 
-    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const repo = new ContractRepository(tx);
-      const before = await repo.findContractById(contractId);
-      if (!before) {
-        const err: any = new Error('계약을 찾을 수 없습니다.');
-        err.statusCode = 404;
-        throw err;
-      }
+    if (this.prisma) {
+      return this.prisma.$transaction(async (tx) => {
+        const repo = new ContractRepository(tx);
+        const updated = await repo.updateContract(contractId, updatePayload);
 
-      await repo.deleteContract(contractId);
+        // 계약서(문서) 연결 및 파일명 변경
+        if (
+          Array.isArray(updatePayload.contractDocuments) &&
+          updatePayload.contractDocuments.length
+        ) {
+          const documentIds = updatePayload.contractDocuments
+            .map((d: any) => (typeof d === 'number' ? d : d?.id))
+            .filter((id: any): id is number => Number.isInteger(id));
 
-      await refreshAggregatesAfterContractChange(
-        tx,
-        user.companyId,
-        before.customerId ?? null,
-        before.carId ?? null,
-      );
-    });
+          if (documentIds.length) {
+            await ContractService.attachDocumentsToContractTx(
+              tx,
+              user.companyId,
+              contractId,
+              documentIds,
+            );
+          }
+
+          const fileNameUpdates = updatePayload.contractDocuments
+            .map((d: any) => {
+              const id = typeof d === 'number' ? undefined : d?.id;
+              const fileName = typeof d === 'number' ? undefined : d?.fileName;
+              return id && fileName ? { id, fileName } : null;
+            })
+            .filter((v): v is { id: number; fileName: string } => !!v);
+
+          if (fileNameUpdates.length) {
+            await ContractService.updateContractDocumentFileNamesTx(
+              tx,
+              user.companyId,
+              contractId,
+              fileNameUpdates,
+            );
+          }
+        }
+
+        await refreshAggregatesAfterContractChange(
+          tx,
+          user.companyId,
+          updated.customer?.id ?? null,
+          updated.car?.id ?? null,
+        );
+
+        return updated;
+      });
+    }
+
+    // Prisma 미주입 경로(문서 연결/파일명 변경은 생략)
+    return this.repository.updateContract(contractId, updatePayload);
   }
 
-  // 드롭다운들
+  /** 계약 삭제 (담당자 한정) */
+  async deleteContract(user: RequestUser, contractId: number) {
+    await this.assertCanModify(user, contractId);
+
+    if (this.prisma) {
+      await this.prisma.$transaction(async (tx) => {
+        const repo = new ContractRepository(tx);
+        const before = await repo.findContractById(contractId);
+
+        await repo.deleteContract(contractId);
+
+        await refreshAggregatesAfterContractChange(
+          tx,
+          user.companyId,
+          before?.customer?.id ?? null,
+          before?.car?.id ?? null,
+        );
+      });
+      return;
+    }
+
+    await this.repository.deleteContract(contractId);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 드롭다운 소스
+  // ──────────────────────────────────────────────────────────────────────────────
+
+  /** 계약용 차량 선택 목록 (보유중만) */
   async getContractCars(user: RequestUser): Promise<ItemForDropdown[]> {
-    const rows = await this.repository.findCarsForContract(user.companyId);
-    return rows.map((c) => ({ id: c.id, data: `${c.model}(${c.carNumber})` }));
+    const cars = await this.repository.findCarsForContract(user.companyId);
+    return cars.map((car) => ({ id: car.id, data: `${car.model}(${car.carNumber})` }));
   }
 
+  /** 계약용 고객 선택 목록 */
   async getContractCustomers(user: RequestUser) {
-    // 프론트 드롭다운: "이름(email)" 형태로 만들고 싶으면 컨트롤러에서 가공
     return this.repository.findCustomersByCompanyId(user.companyId);
   }
 
+  /** 계약용 사용자 선택 목록 */
   async getContractUsers(user: RequestUser) {
     return this.repository.findUsersByCompanyId(user.companyId);
   }
+
+  // ──────────────────────────────────────────────────────────────────────────────
+  // 트랜잭션 헬퍼(정적 메서드: ESLint class-methods-use-this 대응)
+  // ──────────────────────────────────────────────────────────────────────────────
+
+  /** 트랜잭션 안에서 문서들을 계약에 연결 */
+  private static async attachDocumentsToContractTx(
+    tx: Prisma.TransactionClient,
+    companyId: number,
+    contractId: number,
+    documentIds: number[],
+  ): Promise<void> {
+    if (!documentIds.length) return;
+    await tx.contractDocument.updateMany({
+      where: { id: { in: documentIds }, contract: { companyId } },
+      data: { contractId },
+    });
+  }
+
+  /** 트랜잭션 안에서 문서 파일명 일괄 변경 */
+  private static async updateContractDocumentFileNamesTx(
+    tx: Prisma.TransactionClient,
+    _companyId: number,
+    contractId: number,
+    items: { id: number; fileName: string }[],
+  ): Promise<void> {
+    if (!items.length) return;
+    await Promise.all(
+      items.map(({ id, fileName }) =>
+        tx.contractDocument.update({
+          where: { id },
+          data: { fileName, contractId },
+        }),
+      ),
+    );
+  }
 }
+
+export default ContractService;
