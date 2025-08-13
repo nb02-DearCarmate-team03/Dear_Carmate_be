@@ -11,7 +11,11 @@ import { Transform, Type } from 'class-transformer';
 import { ContractStatus as PrismaContractStatus } from '@prisma/client';
 import { UpdateContractDocumentDto } from './update-contract-document.dto';
 import { MeetingDto } from './meeting.dto';
-import { ToIdentifier, ToCurrencyAmount } from '../../common/utils/contract.converter';
+import {
+  ToIdentifier,
+  ToCurrencyAmount,
+  ToKoreaStandardTimeDateTime,
+} from '../../common/utils/contract.converter';
 
 function toPrismaStatus(value?: unknown): PrismaContractStatus | undefined {
   if (value == null) return undefined;
@@ -58,6 +62,7 @@ export class UpdateContractDto {
 
   @IsOptional()
   @IsDateString()
+  @ToKoreaStandardTimeDateTime()
   resolutionDate?: string;
 
   @IsOptional()
@@ -72,7 +77,5 @@ export class UpdateContractDto {
   meetings?: MeetingDto[];
 
   @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => UpdateContractDocumentDto)
-  contractDocuments?: UpdateContractDocumentDto[];
+  contractDocuments?: Array<number | { id: number }>;
 }
