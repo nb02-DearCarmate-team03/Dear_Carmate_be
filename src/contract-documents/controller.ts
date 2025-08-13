@@ -4,6 +4,17 @@ import GetContractDocumentsDto from './dto/get-contract-documents.dto';
 import UploadContractDocumentDto from './dto/upload-contract-document.dto';
 import DownloadContractDocumentsDto from './dto/download-contract-documents.dto';
 
+// Multer 파일 타입 정의
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    // eslint-disable-next-line no-shadow
+    interface Request {
+      file?: Multer.File;
+      files?: Multer.File[] | { [fieldname: string]: Multer.File[] };
+    }
+  }
+}
 // Express의 기본 Request 타입 사용 (index.d.ts에서 확장된 타입)
 export default class ContractDocumentsController {
   // eslint-disable-next-line no-empty-function
