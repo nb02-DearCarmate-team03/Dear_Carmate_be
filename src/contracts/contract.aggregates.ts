@@ -8,16 +8,19 @@ export async function refreshAggregatesAfterContractChange(
   carId: number | null,
 ): Promise<{
   totalContractCount: number;
-  revenueByCarType: Record<string, number>; // ← 한글 라벨로 키를 씁니다
+  revenueByCarType: Record<string, number>;
   customerContractCount: number | null;
   nextCarStatus: CarStatus | null;
 }> {
-  // 1) 회사 전체 계약 수
+  // 1) 회사 전체 계약 수 (원하면 완료만 카운트로 변경 가능)
   const totalContractCount = await tx.contract.count({ where: { companyId } });
+  // 완료만으로 바꾸고 싶으면 위 줄을 주석처리하고 아래로 교체:
+  // const totalContractCount = await tx.contract.count({
+  //   where: { companyId, status: PrismaContractStatus.CONTRACT_SUCCESSFUL },
+  // });
 
   // 2) 차량 유형별 매출 합계(성공 계약만)
   const carTypes: CarType[] = ['COMPACT', 'MIDSIZE', 'FULLSIZE', 'SPORTS', 'SUV'];
-
   const aggregates = await Promise.all(
     carTypes.map((type) =>
       tx.contract.aggregate({
@@ -30,24 +33,32 @@ export async function refreshAggregatesAfterContractChange(
       }),
     ),
   );
-
-  // ✅ 선언 누락 해결: 먼저 객체 선언
   const revenueByCarType: Record<string, number> = {};
   carTypes.forEach((type, idx) => {
-    const sum = Number(aggregates[idx]?._sum.contractPrice ?? 0); // undefined 가드
-    const label = carTypeToKorean(type) ?? String(type); // 한글 라벨 적용
+    const sum = Number(aggregates[idx]?._sum.contractPrice ?? 0);
+    const label = carTypeToKorean(type) ?? String(type);
     revenueByCarType[label] = sum;
   });
 
-  // 3) 고객의 계약 횟수
+  // 3) 고객의 '계약 완료' 횟수 계산 + 고객 레코드에 반영
   let customerContractCount: number | null = null;
-  if (typeof customerId === 'number') {
+  if (customerId != null) {
     customerContractCount = await tx.contract.count({
-      where: { companyId, customerId },
+      where: {
+        companyId,
+        customerId,
+        status: PrismaContractStatus.CONTRACT_SUCCESSFUL,
+        deletedAt: null, // ← 소프트 삭제 제외(있다면)
+      },
+    });
+
+    await tx.customer.update({
+      where: { id: customerId },
+      data: { contractCount: customerContractCount },
     });
   }
 
-  // 4) 차량 상태 재계산 후 반영 (그대로 유지)
+  // 4) 차량 상태 재계산
   let nextCarStatus: CarStatus | null = null;
   if (typeof carId === 'number') {
     const successfulCount = await tx.contract.count({

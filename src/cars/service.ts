@@ -29,7 +29,7 @@ export interface CarModelListResponseDto {
 
 export default class CarService {
   private readonly carRepository: CarRepository;
-  private readonly prisma?: PrismaClient;
+  private readonly prisma: PrismaClient; // PrismaClient
 
   constructor(carRepository: CarRepository) {
     this.carRepository = carRepository;
