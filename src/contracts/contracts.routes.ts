@@ -19,120 +19,6 @@ export default function buildContractRouter(prismaClient: PrismaClient) {
 
   /**
    * @swagger
-   * /contracts:
-   *   post:
-   *     tags: [Contracts]
-   *     summary: 계약 등록
-   *     description: 새로운 계약 정보 등록
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/CreateContractRequest'
-   *     responses:
-   *       '201':
-   *         description: 계약 등록 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ContractResponse'
-   *       '400': { $ref: '#/components/responses/BadRequest' }
-   *       '401': { $ref: '#/components/responses/Unauthorized' }
-   */
-  router.post('/', validateDto(CreateContractDto), controller.createContract);
-
-  /**
-   * @swagger
-   * /contracts:
-   *   get:
-   *     tags: [Contracts]
-   *     summary: 계약 목록 조회
-   *     description: 등록된 계약 목록 조회 (검색, 페이지네이션, 그룹화 지원)
-   *     parameters:
-   *       - $ref: '#/components/parameters/PageParam'
-   *       - $ref: '#/components/parameters/PageSizeParam'
-   *       - in: query
-   *         name: searchBy
-   *         schema: { type: string, enum: [customerName, userName] }
-   *       - $ref: '#/components/parameters/KeywordParam'
-   *       - in: query
-   *         name: grouped
-   *         schema: { type: string, enum: [true, false] }
-   *     responses:
-   *       '200':
-   *         description: 계약 목록 조회 성공
-   *       '401': { $ref: '#/components/responses/Unauthorized' }
-   */
-  router.get('/', controller.getContracts);
-
-  /**
-   * @swagger
-   * /contracts/{contractId}:
-   *   get:
-   *     tags: [Contracts]
-   *     summary: 계약 단건 조회
-   *     parameters:
-   *       - in: path
-   *         name: contractId
-   *         required: true
-   *         schema: { type: integer }
-   *     responses:
-   *       '200': { description: 조회 성공 }
-   *       '404': { $ref: '#/components/responses/NotFound' }
-   */
-  router.get('/:contractId', controller.getContract);
-
-  /**
-   * @swagger
-   * /contracts/{contractId}:
-   *   patch:
-   *     tags: [Contracts]
-   *     summary: 계약 정보 수정
-   *     parameters:
-   *       - in: path
-   *         name: contractId
-   *         required: true
-   *         schema: { type: integer }
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/UpdateContractRequest'
-   *     responses:
-   *       '200':
-   *         description: 계약 정보 수정 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ContractResponse'
-   *       '400': { $ref: '#/components/responses/BadRequest' }
-   *       '401': { $ref: '#/components/responses/Unauthorized' }
-   *       '404': { $ref: '#/components/responses/NotFound' }
-   */
-  router.patch('/:contractId', validateDto(UpdateContractDto), controller.updateContract);
-
-  /**
-   * @swagger
-   * /contracts/{contractId}:
-   *   delete:
-   *     tags: [Contracts]
-   *     summary: 계약 삭제
-   *     parameters:
-   *       - in: path
-   *         name: contractId
-   *         required: true
-   *         schema: { type: integer }
-   *     responses:
-   *       '204': { description: 계약 삭제 성공 }
-   *       '401': { $ref: '#/components/responses/Unauthorized' }
-   *       '404': { $ref: '#/components/responses/NotFound' }
-   */
-  router.delete('/:contractId', controller.deleteContract);
-
-  /**
-   * @swagger
    * /contracts/cars:
    *   get:
    *     tags: [Contracts]
@@ -188,6 +74,114 @@ export default function buildContractRouter(prismaClient: PrismaClient) {
    *       '401': { $ref: '#/components/responses/Unauthorized' }
    */
   router.get('/users', controller.getContractUsers);
+
+  /**
+   * @swagger
+   * /contracts:
+   *   post:
+   *     tags: [Contracts]
+   *     summary: 계약 등록
+   *     description: 새로운 계약 정보 등록
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreateContractRequest'
+   *     responses:
+   *       '201':
+   *         description: 계약 등록 성공
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ContractResponse'
+   *       '400': { $ref: '#/components/responses/BadRequest' }
+   *       '401': { $ref: '#/components/responses/Unauthorized' }
+   */
+  router.post('/', validateDto(CreateContractDto), controller.createContract);
+
+  /**
+   * @swagger
+   * /contracts:
+   *   get:
+   *     tags: [Contracts]
+   *     summary: 계약 목록 조회
+   *     description: 등록된 계약 목록 조회 (검색, 페이지네이션, 그룹화 지원)
+   *     parameters:
+   *       - $ref: '#/components/parameters/PageParam'
+   *       - $ref: '#/components/parameters/PageSizeParam'
+   *       - in: query
+   *         name: searchBy
+   *         schema: { type: string, enum: [customerName, userName] }
+   *       - $ref: '#/components/parameters/KeywordParam'
+   *       - in: query
+   *         name: grouped
+   *         schema: { type: string, enum: [true, false] }
+   *     responses:
+   *       '200': { description: 계약 목록 조회 성공 }
+   *       '401': { $ref: '#/components/responses/Unauthorized' }
+   */
+  router.get('/', controller.getContracts);
+
+  /**
+   * @swagger
+   * /contracts/{contractId}:
+   *   get:
+   *     tags: [Contracts]
+   *     summary: 계약 단건 조회
+   *     parameters:
+   *       - in: path
+   *         name: contractId
+   *         required: true
+   *         schema: { type: integer }
+   *     responses:
+   *       '200': { description: 조회 성공 }
+   *       '404': { $ref: '#/components/responses/NotFound' }
+   */
+  router.get('/:contractId', controller.getContract);
+
+  /**
+   * @swagger
+   * /contracts/{contractId}:
+   *   patch:
+   *     tags: [Contracts]
+   *     summary: 계약 정보 수정
+   *     parameters:
+   *       - in: path
+   *         name: contractId
+   *         required: true
+   *         schema: { type: integer }
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/UpdateContractRequest'
+   *     responses:
+   *       '200': { description: 계약 정보 수정 성공 }
+   *       '400': { $ref: '#/components/responses/BadRequest' }
+   *       '401': { $ref: '#/components/responses/Unauthorized' }
+   *       '404': { $ref: '#/components/responses/NotFound' }
+   */
+  router.patch('/:contractId', validateDto(UpdateContractDto), controller.updateContract);
+
+  /**
+   * @swagger
+   * /contracts/{contractId}:
+   *   delete:
+   *     tags: [Contracts]
+   *     summary: 계약 삭제
+   *     parameters:
+   *       - in: path
+   *         name: contractId
+   *         required: true
+   *         schema: { type: integer }
+   *     responses:
+   *       '204': { description: 계약 삭제 성공 }
+   *       '401': { $ref: '#/components/responses/Unauthorized' }
+   *       '404': { $ref: '#/components/responses/NotFound' }
+   */
+  router.delete('/:contractId', controller.deleteContract);
 
   return router;
 }
