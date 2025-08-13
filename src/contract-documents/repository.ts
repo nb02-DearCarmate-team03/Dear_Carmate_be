@@ -190,29 +190,19 @@ export default class ContractDocumentsRepository {
     });
   }
 
-  async createContractDocuments(
-    contractId: number,
+  async createContractDocument(
     userId: number,
-    files: Express.Multer.File[],
-  ): Promise<ContractDocument[]> {
-    return this.prisma.$transaction(async (tx) => {
-      const documents = await Promise.all(
-        files.map((file) =>
-          tx.contractDocument.create({
-            data: {
-              contractId,
-              documentName: file.originalname,
-              fileName: file.filename,
-              filePath: file.path,
-              fileSize: file.size,
-              fileType: file.mimetype,
-              uploadedBy: userId,
-            },
-          }),
-        ),
-      );
-
-      return documents;
+    file: Express.Multer.File,
+  ): Promise<ContractDocument> {
+    return this.prisma.contractDocument.create({
+      data: {
+        documentName: file.originalname,
+        fileName: file.filename,
+        filePath: file.path,
+        fileSize: file.size,
+        fileType: file.mimetype,
+        uploadedBy: userId,
+      },
     });
   }
 
