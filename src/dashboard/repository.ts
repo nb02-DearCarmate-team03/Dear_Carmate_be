@@ -1,151 +1,151 @@
-import { PrismaClient, ContractStatus } from '@prisma/client';
-import { CarType } from 'src/common/enums/car-type.enum';
+/* eslint-disable no-useless-constructor */
+import {
+  PrismaClient,
+  Prisma,
+  ContractStatus as PrismaContractStatus,
+  CarType as PrismaCarType,
+} from '@prisma/client';
+import { CarType } from '../common/enums/car-type.enum';
+import { carTypeToKorean } from '../common/utils/car.converter';
+
+// ---- 유틸 (this/루프 미사용) ----
+
+const carTypeValues: CarType[] = Object.values(CarType).filter(
+  (v) => typeof v === 'string',
+) as CarType[];
+
+const makeZeroBaseByCarType = (): Record<CarType, number> =>
+  carTypeValues.reduce<Record<CarType, number>>(
+    (acc, t) => {
+      acc[t] = 0;
+      return acc;
+    },
+    {} as Record<CarType, number>,
+  );
+
+const getThisMonthRange = (): { firstDay: Date; lastDay: Date } => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { firstDay, lastDay };
+};
+
+const getLastMonthRange = (): { firstDay: Date; lastDay: Date } => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+  return { firstDay, lastDay };
+};
+
+// ---- Repository ----
 
 export class DashboardRepository {
-  constructor(private readonly prisma: PrismaClient) {
-    // constructor는 PrismaClient 의존성 주입 용도로 사용됩니다.
+  constructor(private readonly prisma: PrismaClient | Prisma.TransactionClient) {
+    // 생성자에서 PrismaClient 또는 TransactionClient를 주입받음
   }
 
-  /**
-   * 이달의 총 매출 계산
-   */
+  /** 이번 달 총 매출 (성공 계약만) */
   async getMonthlyRevenue(companyId: number): Promise<number> {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    const result = await this.prisma.contract.aggregate({
-      _sum: {
-        contractPrice: true,
-      },
+    const { firstDay, lastDay } = getThisMonthRange();
+    const rows = await this.prisma.contract.findMany({
       where: {
         companyId,
-        status: ContractStatus.CONTRACT_SUCCESSFUL,
-        createdAt: {
-          gte: firstDay,
-          lte: lastDay,
-        },
+        status: PrismaContractStatus.CONTRACT_SUCCESSFUL,
+        createdAt: { gte: firstDay, lte: lastDay }, // 필요 시 contractDate로 교체
       },
+      select: { contractPrice: true },
     });
 
-    return result._sum.contractPrice?.toNumber() ?? 0;
+    return rows.reduce<number>((sum, r) => {
+      const val = r.contractPrice?.toString?.();
+      return sum + Number(val ?? 0);
+    }, 0);
   }
 
-  /**
-   * 전월 총 매출 계산
-   */
+  /** 지난 달 총 매출 (성공 계약만) */
   async getLastMonthRevenue(companyId: number): Promise<number> {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-
-    const result = await this.prisma.contract.aggregate({
-      _sum: {
-        contractPrice: true,
-      },
+    const { firstDay, lastDay } = getLastMonthRange();
+    const rows = await this.prisma.contract.findMany({
       where: {
         companyId,
-        status: ContractStatus.CONTRACT_SUCCESSFUL,
-        createdAt: {
-          gte: firstDay,
-          lte: lastDay,
-        },
+        status: PrismaContractStatus.CONTRACT_SUCCESSFUL,
+        createdAt: { gte: firstDay, lte: lastDay },
       },
+      select: { contractPrice: true },
     });
 
-    return result._sum.contractPrice?.toNumber() ?? 0;
+    return rows.reduce<number>((sum, r) => {
+      const val = r.contractPrice?.toString?.();
+      return sum + Number(val ?? 0);
+    }, 0);
   }
 
-  /**
-   * 진행 중인 계약 수
-   */
+  /** 진행 중 계약 수 (정의에 맞게 조정 가능) */
   async getOngoingContractCount(companyId: number): Promise<number> {
     return this.prisma.contract.count({
       where: {
         companyId,
-        status: {
-          in: [
-            ContractStatus.CAR_INSPECTION,
-            ContractStatus.PRICE_NEGOTIATION,
-            ContractStatus.CONTRACT_DRAFT,
-          ],
-        },
+        NOT: { status: PrismaContractStatus.CONTRACT_SUCCESSFUL },
       },
     });
   }
 
-  /**
-   * 계약 성공 수
-   */
+  /** 성사된 계약 수 */
   async getSuccessfulContractCount(companyId: number): Promise<number> {
     return this.prisma.contract.count({
-      where: {
-        companyId,
-        status: ContractStatus.CONTRACT_SUCCESSFUL,
-      },
+      where: { companyId, status: PrismaContractStatus.CONTRACT_SUCCESSFUL },
     });
   }
 
-  /**
-   * 차량 타입별 계약 수
-   */
+  /** 이번 달 차량타입별 계약 수 (성공 계약만) */
   async getContractsByCarType(companyId: number): Promise<Record<CarType, number>> {
-    const cars = await this.prisma.car.findMany({
+    const { firstDay, lastDay } = getThisMonthRange();
+
+    const rows = await this.prisma.contract.findMany({
       where: {
         companyId,
+        status: PrismaContractStatus.CONTRACT_SUCCESSFUL,
+        createdAt: { gte: firstDay, lte: lastDay },
       },
-      select: {
-        type: true,
-        contracts: {
-          select: {
-            id: true,
-          },
-        },
-      },
+      select: { car: { select: { type: true } } },
     });
 
-    return cars.reduce(
-      (acc, car) => {
-        const typeKey = (car.type ?? 'UNKNOWN') as CarType;
-        acc[typeKey] = (acc[typeKey] || 0) + car.contracts.length;
-        return acc;
-      },
-      {} as Record<CarType, number>,
-    );
+    const base = makeZeroBaseByCarType();
+
+    rows.forEach((row) => {
+      const tPrisma = row.car?.type as PrismaCarType | undefined; // COMPACT, MIDSIZE, ...
+      const label = tPrisma ? (carTypeToKorean(tPrisma) as CarType) : undefined; // → '경·소형' 등
+      if (label && label in base) base[label] += 1;
+    });
+
+    return base;
   }
 
-  /**
-   * 차량 타입별 매출액 합산
-   */
+  /** 이번 달 차량타입별 매출 합계 (성공 계약만) */
   async getSalesByCarType(companyId: number): Promise<Record<CarType, number>> {
-    const cars = await this.prisma.car.findMany({
+    const { firstDay, lastDay } = getThisMonthRange();
+
+    const rows = await this.prisma.contract.findMany({
       where: {
         companyId,
+        status: PrismaContractStatus.CONTRACT_SUCCESSFUL,
+        createdAt: { gte: firstDay, lte: lastDay },
       },
       select: {
-        type: true,
-        contracts: {
-          where: {
-            status: ContractStatus.CONTRACT_SUCCESSFUL,
-          },
-          select: {
-            contractPrice: true,
-          },
-        },
+        contractPrice: true,
+        car: { select: { type: true } },
       },
     });
 
-    return cars.reduce(
-      (acc, car) => {
-        const typeKey = (car.type ?? 'UNKNOWN') as CarType;
-        const total = car.contracts.reduce(
-          (sum, contract) => sum + (contract.contractPrice?.toNumber() ?? 0),
-          0,
-        );
-        acc[typeKey] = (acc[typeKey] || 0) + total;
-        return acc;
-      },
-      {} as Record<CarType, number>,
-    );
+    const base = makeZeroBaseByCarType();
+
+    rows.forEach((row) => {
+      const tPrisma = row.car?.type as PrismaCarType | undefined;
+      const label = tPrisma ? (carTypeToKorean(tPrisma) as CarType) : undefined;
+      const price = Number(row.contractPrice?.toString?.() ?? 0);
+      if (label && label in base) base[label] += price;
+    });
+
+    return base;
   }
 }

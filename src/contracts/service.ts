@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PrismaClient, Prisma, ContractStatus as PrismaContractStatus } from '@prisma/client';
 import ContractRepository, { ContractSearchBy, ContractWithRelations } from './repository';
 import { CreateContractDto } from './dto/create-contract.dto';

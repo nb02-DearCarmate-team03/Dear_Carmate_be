@@ -12,6 +12,17 @@ interface ContractWithCustomer {
   } | null;
 }
 
+interface ContractForDraft {
+  id: number;
+  car: {
+    carNumber: string;
+    model: string; // Car 스키마의 model 필드 사용
+  };
+  customer: {
+    name: string;
+  } | null;
+}
+
 export default class ContractDocumentsRepository {
   // eslint-disable-next-line no-empty-function
   constructor(private readonly prisma: PrismaClient) {}
@@ -112,6 +123,38 @@ export default class ContractDocumentsRepository {
     return { documents, total };
   }
 
+  // ✨ 새로운 메서드: 계약서 추가용 계약 목록 조회
+  async findContractsForDraft(companyId: number): Promise<ContractForDraft[]> {
+    return this.prisma.contract.findMany({
+      where: {
+        companyId,
+        deletedAt: null,
+        // 계약서가 없는 계약들만 조회
+        contractDocuments: {
+          none: {
+            deletedAt: null,
+          },
+        },
+      },
+      include: {
+        car: {
+          select: {
+            carNumber: true,
+            model: true, // Car 스키마의 model 필드 사용
+          },
+        },
+        customer: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
   async findContractById(
     contractId: number,
     companyId: number,
@@ -147,29 +190,19 @@ export default class ContractDocumentsRepository {
     });
   }
 
-  async createContractDocuments(
-    contractId: number,
+  async createContractDocument(
     userId: number,
-    files: Express.Multer.File[],
-  ): Promise<ContractDocument[]> {
-    return this.prisma.$transaction(async (tx) => {
-      const documents = await Promise.all(
-        files.map((file) =>
-          tx.contractDocument.create({
-            data: {
-              contractId,
-              documentName: file.originalname,
-              fileName: file.filename,
-              filePath: file.path,
-              fileSize: file.size,
-              fileType: file.mimetype,
-              uploadedBy: userId,
-            },
-          }),
-        ),
-      );
-
-      return documents;
+    file: Express.Multer.File,
+  ): Promise<ContractDocument> {
+    return this.prisma.contractDocument.create({
+      data: {
+        documentName: file.originalname,
+        fileName: file.filename,
+        filePath: file.path,
+        fileSize: file.size,
+        fileType: file.mimetype,
+        uploadedBy: userId,
+      },
     });
   }
 
@@ -210,6 +243,59 @@ export default class ContractDocumentsRepository {
       },
       data: {
         deletedAt: new Date(),
+      },
+    });
+  }
+  // ✨ 새로운 메서드들: 계약 API 통합용
+
+  /**
+   * 계약서들을 특정 계약에 연결
+   */
+  async attachDocumentsToContract(contractId: number, documentIds: number[]): Promise<void> {
+    await this.prisma.contractDocument.updateMany({
+      where: {
+        id: {
+          in: documentIds,
+        },
+      },
+      data: {
+        contractId,
+      },
+    });
+  }
+
+  /**
+   * 계약서 파일명 업데이트
+   */
+  async updateDocumentFileName(documentId: number, fileName: string): Promise<void> {
+    await this.prisma.contractDocument.update({
+      where: {
+        id: documentId,
+      },
+      data: {
+        fileName,
+      },
+    });
+  }
+
+  /**
+   * 특정 계약에 속한 계약서들 조회
+   */
+  async findDocumentsByContractId(
+    contractId: number,
+    companyId: number,
+  ): Promise<ContractDocument[]> {
+    return this.prisma.contractDocument.findMany({
+      where: {
+        contractId,
+        deletedAt: null,
+        contract: {
+          companyId,
+          deletedAt: null,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }
