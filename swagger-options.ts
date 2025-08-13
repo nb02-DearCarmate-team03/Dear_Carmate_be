@@ -10,16 +10,12 @@ const swaggerOptions: Options = {
     },
     servers: [
       {
-        url:
-          process.env.NODE_ENV === 'production'
-            ? process.env.RENDER_EXTERNAL_URL || 'https://your-app.onrender.com'
-            : `http://localhost:${process.env.PORT || 4000}`,
+        url: `http://localhost:${process.env.PORT || 4000}`,
       },
     ],
   },
   apis: [
-    './src/**/*.ts',
-    './dist/**/*.js', // src 폴더와 그 하위 모든 폴더에 있는 .ts 파일을 스캔합니다.
+    './src/**/*.ts', // src 폴더와 그 하위 모든 폴더에 있는 .ts 파일을 스캔합니다.
   ],
 };
 
