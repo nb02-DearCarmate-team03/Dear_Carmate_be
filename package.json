@@ -8,8 +8,9 @@
     "seed": "ts-node prisma/seed.ts",
     "test": "ts-node prisma/seed.ts && ts-node prisma/mock.ts",
     "build": "tsc",
-    "start": "node dist/main.ts",
-    "prisma:migrate": "prisma migrate dev",
+    "start": "node dist/main.js",
+    "postbuild": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "lint": "eslint . --ext .ts --fix"
   },
