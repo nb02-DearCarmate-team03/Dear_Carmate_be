@@ -1,216 +1,189 @@
-import { PrismaClient, ContractDocument, Prisma } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  ContractStatus as PrismaContractStatus,
+  ContractDocument,
+} from '@prisma/client';
 
-interface ContractWithCustomer {
+type DropdownRow = {
   id: number;
-  contractDate: Date | null;
-  car: {
-    carNumber: string;
-  };
-  customer: {
-    email: string;
-    name: string;
-  } | null;
-}
+  carNumber: string | null;
+  model: string | null;
+  customerName: string | null;
+};
 
 export default class ContractDocumentsRepository {
-  // eslint-disable-next-line no-empty-function
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly prisma: PrismaClient;
 
-  async findContractDocuments(
-    companyId: number,
-    page: number,
-    pageSize: number,
-    keyword?: string,
-    searchBy?: string,
-  ): Promise<{ documents: any[]; total: number }> {
-    let where: Prisma.ContractDocumentWhereInput = {
-      deletedAt: null,
-      contract: {
-        companyId,
-        deletedAt: null,
-      },
-    };
-
-    // 검색 조건 추가
-    if (keyword && typeof keyword === 'string' && keyword.trim() && searchBy) {
-      const trimmedKeyword = keyword.trim();
-
-      if (searchBy === 'contractName') {
-        where = {
-          deletedAt: null,
-          documentName: {
-            contains: trimmedKeyword,
-          },
-          contract: {
-            companyId,
-            deletedAt: null,
-          },
-        };
-      } else if (searchBy === 'userName') {
-        where = {
-          deletedAt: null,
-          contract: {
-            companyId,
-            deletedAt: null,
-            user: {
-              name: {
-                contains: trimmedKeyword,
-              },
-            },
-          },
-        };
-      } else if (searchBy === 'carNumber') {
-        where = {
-          deletedAt: null,
-          contract: {
-            companyId,
-            deletedAt: null,
-            car: {
-              carNumber: {
-                contains: trimmedKeyword,
-              },
-            },
-          },
-        };
-      }
-    }
-
-    const [documents, total] = await this.prisma.$transaction([
-      this.prisma.contractDocument.findMany({
-        where,
-        include: {
-          contract: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                },
-              },
-              car: {
-                select: {
-                  carNumber: true,
-                },
-              },
-              customer: {
-                select: {
-                  email: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-        skip: (page - 1) * pageSize,
-        take: Number(pageSize),
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.contractDocument.count({ where }),
-    ]);
-
-    return { documents, total };
+  // 👇 빈 생성자 경고를 피하기 위해 명시 대입
+  constructor(prisma: PrismaClient) {
+    this.prisma = prisma;
   }
 
-  async findContractById(
-    contractId: number,
-    companyId: number,
-  ): Promise<ContractWithCustomer | null> {
-    return this.prisma.contract.findFirst({
-      where: {
-        id: contractId,
-        companyId,
-        deletedAt: null,
+  /** 계약 보드에 실제로 보이는 상태(가격협의/계약서작성중)만 반환 */
+  async findContractsForDocumentDropdown(
+    keyword?: string,
+    boardOnly: boolean = true,
+  ): Promise<DropdownRow[]> {
+    const where: Prisma.ContractWhereInput = {};
+
+    if (boardOnly) {
+      where.status = {
+        in: [PrismaContractStatus.PRICE_NEGOTIATION, PrismaContractStatus.CONTRACT_DRAFT],
+      } as Prisma.EnumContractStatusFilter;
+    }
+
+    if (keyword && keyword.trim()) {
+      const q = keyword.trim();
+      where.OR = [
+        { user: { is: { name: { contains: q, mode: 'insensitive' } } } },
+        { customer: { is: { name: { contains: q, mode: 'insensitive' } } } },
+        { car: { is: { carNumber: { contains: q, mode: 'insensitive' } } } },
+      ];
+    }
+
+    const rows = await this.prisma.contract.findMany({
+      where,
+      select: {
+        id: true,
+        car: { select: { carNumber: true, model: true } },
+        customer: { select: { name: true } },
       },
-      include: {
-        car: {
-          select: {
-            carNumber: true,
-          },
-        },
-        customer: {
-          select: {
-            email: true,
-            name: true,
-          },
-        },
-      },
+      orderBy: { id: 'desc' },
+      take: 50,
     });
+
+    return rows.map((r) => ({
+      id: r.id,
+      carNumber: r.car?.carNumber ?? null,
+      model: r.car?.model ?? null,
+      customerName: r.customer?.name ?? null,
+    }));
+  }
+
+  async contractExists(contractId: number): Promise<boolean> {
+    const row = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { id: true },
+    });
+    return !!row;
   }
 
   async countDocumentsByContract(contractId: number): Promise<number> {
     return this.prisma.contractDocument.count({
-      where: {
-        contractId,
-        deletedAt: null,
-      },
+      where: { contractId, deletedAt: null },
     });
   }
 
+  /** 파일 다건 생성 — 루프 안 await 제거 (트랜잭션으로 일괄 실행) */
   async createContractDocuments(
     contractId: number,
     userId: number,
     files: Express.Multer.File[],
   ): Promise<ContractDocument[]> {
-    return this.prisma.$transaction(async (tx) => {
-      const documents = await Promise.all(
-        files.map((file) =>
-          tx.contractDocument.create({
-            data: {
-              contractId,
-              documentName: file.originalname,
-              fileName: file.filename,
-              filePath: file.path,
-              fileSize: file.size,
-              fileType: file.mimetype,
-              uploadedBy: userId,
-            },
-          }),
-        ),
-      );
+    if (!files?.length) return [];
 
-      return documents;
-    });
-  }
-
-  async findDocumentById(documentId: number, companyId: number): Promise<ContractDocument | null> {
-    return this.prisma.contractDocument.findFirst({
-      where: {
-        id: documentId,
-        deletedAt: null,
-        contract: {
-          companyId,
-          deletedAt: null,
+    const ops = files.map((f) =>
+      this.prisma.contractDocument.create({
+        data: {
+          contractId,
+          uploadedBy: userId,
+          documentName: f.originalname ?? null,
+          fileName: f.originalname ?? null,
+          filePath: (f as any).path ?? f.filename,
+          fileSize: f.size,
+          fileType: f.mimetype ?? 'application/octet-stream',
         },
-      },
-    });
+      }),
+    );
+
+    // 한 번에 실행 → no-await-in-loop 해결
+    const created = await this.prisma.$transaction(ops);
+    return created;
   }
 
-  async findDocumentsByIds(documentIds: number[], companyId: number): Promise<ContractDocument[]> {
+  async findDocumentById(id: number) {
+    return this.prisma.contractDocument.findUnique({ where: { id } });
+  }
+
+  async findDocumentsByIds(ids: number[]) {
+    if (!ids.length) return [];
     return this.prisma.contractDocument.findMany({
-      where: {
-        id: {
-          in: documentIds,
-        },
-        deletedAt: null,
-        contract: {
-          companyId,
-          deletedAt: null,
-        },
-      },
+      where: { id: { in: ids }, deletedAt: null },
     });
   }
 
-  async deleteDocuments(documentIds: number[]): Promise<void> {
-    await this.prisma.contractDocument.updateMany({
-      where: {
-        id: {
-          in: documentIds,
+  async deleteDocumentsOfContract(contractId: number, ids: number[]) {
+    if (!ids.length) return 0;
+    const r = await this.prisma.contractDocument.updateMany({
+      where: { id: { in: ids }, contractId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    return r.count;
+  }
+
+  async findContractDocuments(page: number, pageSize: number, keyword?: string, searchBy?: string) {
+    const where: Prisma.ContractDocumentWhereInput = { deletedAt: null };
+
+    if (keyword && keyword.trim()) {
+      const q = keyword.trim();
+      if (searchBy === 'userName') {
+        where.contract = {
+          is: {
+            user: { is: { name: { contains: q, mode: 'insensitive' } } },
+          },
+        };
+      } else {
+        where.contract = {
+          is: {
+            customer: { is: { name: { contains: q, mode: 'insensitive' } } },
+          },
+        };
+      }
+    }
+
+    const documents = await this.prisma.contractDocument.findMany({
+      where,
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractDate: true,
+            user: { select: { name: true } },
+            car: { select: { carNumber: true } },
+            customer: { select: { name: true } },
+          },
         },
       },
-      data: {
-        deletedAt: new Date(),
-      },
+      orderBy: [{ contractId: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+
+    return { documents };
+  }
+
+  async countDistinctContracts(keyword?: string, searchBy?: string) {
+    const where: Prisma.ContractWhereInput = {};
+    if (keyword && keyword.trim()) {
+      const q = keyword.trim();
+      if (searchBy === 'userName') {
+        where.user = { is: { name: { contains: q, mode: 'insensitive' } } };
+      } else {
+        where.customer = {
+          is: { name: { contains: q, mode: 'insensitive' } },
+        };
+      }
+    }
+    return this.prisma.contract.count({ where });
+  }
+
+  async findLatestContractIdByCarNumber(carNumber: string) {
+    const row = await this.prisma.contract.findFirst({
+      where: { car: { is: { carNumber } } },
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    });
+    return row?.id;
   }
 }

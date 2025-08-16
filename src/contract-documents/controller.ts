@@ -1,129 +1,173 @@
-import { Request, Response, NextFunction } from 'express';
-import ContractDocumentsService from './service';
-import GetContractDocumentsDto from './dto/get-contract-documents.dto';
-import UploadContractDocumentDto from './dto/upload-contract-document.dto';
-import DownloadContractDocumentsDto from './dto/download-contract-documents.dto';
-import EditContractDocumentsDto from './dto/edit-contract-documents.dto';
+import type { Request, Response, NextFunction } from 'express';
+import ContractDocumentsService, { parseDeleteIds } from './service';
 
-// Express의 기본 Request 타입 사용 (index.d.ts에서 확장된 타입)
 export default class ContractDocumentsController {
-  // eslint-disable-next-line no-empty-function
-  constructor(private readonly contractDocumentsService: ContractDocumentsService) {}
+  private readonly service: ContractDocumentsService;
 
-  // 화살표 함수를 사용하여 this 바인딩 문제 해결
-  getContractDocuments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  constructor(service: ContractDocumentsService) {
+    this.service = service;
+  }
+
+  getContractDocuments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { companyId } = req.user!;
-      const query = req.query as unknown as GetContractDocumentsDto;
+      const query = req.query as Record<string, unknown>;
+      const page = Number(query.page ?? 1);
+      const pageSize = Number(query.pageSize ?? 8);
+      const searchBy = (query.searchBy as string | undefined) ?? undefined;
+      const keyword = (query.keyword as string | undefined) ?? undefined;
 
-      const result = await this.contractDocumentsService.getContractDocuments(companyId, query);
-
-      res.status(200).json(result);
+      const result = await this.service.getContractDocuments({ page, pageSize, searchBy, keyword });
+      res.json(result);
     } catch (error) {
-      next(error);
+      next(error as Error);
     }
   };
 
-  uploadContractDocuments = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  getDraftContractsForDropdown = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { companyId, id: userId } = req.user!;
-      const { contractId } = req.body as UploadContractDocumentDto;
-      const files = req.files as Express.Multer.File[];
+      const query = req.query as Record<string, unknown>;
+      const keyword = (query.keyword as string | undefined) ?? undefined;
+      const result = await this.service.getDraftContractsForDropdown({ keyword, boardOnly: true });
+      res.json(result);
+    } catch (error) {
+      next(error as Error);
+    }
+  };
 
-      if (!files || files.length === 0) {
+  uploadContractDocuments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const files = (req.files as Express.Multer.File[]) ?? [];
+      const userId = Number((req.user as any)?.id ?? 0);
+      const body = req.body as Record<string, unknown>;
+      const params = req.params as Record<string, unknown>;
+      const query = req.query as Record<string, unknown>;
+
+      const candidates: Array<unknown> = [
+        body.contractId,
+        body.selectedContractId,
+        body.selectedDealId,
+        body.dealId,
+        body.deal_id,
+        body.contract_id,
+        body.contract,
+        body.id,
+        params.contractId,
+        query.contractId,
+        query.id,
+        req.header('x-contract-id'),
+      ];
+
+      let contractId: number | undefined;
+      for (let i = 0; i < candidates.length; i += 1) {
+        const numeric = Number(candidates[i] as any);
+        if (Number.isFinite(numeric)) {
+          contractId = numeric;
+          break;
+        }
+      }
+
+      if (!contractId) {
+        const stringValues: string[] = [];
+        const values = Object.values(body);
+        for (let i = 0; i < values.length; i += 1)
+          if (typeof values[i] === 'string') stringValues.push(values[i] as string);
+        contractId = await this.service.resolveContractIdFromStrings(stringValues);
+      }
+
+      if (!Number.isFinite(contractId)) {
+        res.status(400).json({ message: '계약 ID가 필요합니다.' });
+        return;
+      }
+      if (!files.length) {
         res.status(400).json({ message: '업로드할 파일이 없습니다.' });
         return;
       }
 
-      const result = await this.contractDocumentsService.uploadContractDocuments(
-        companyId,
+      const result = await this.service.uploadContractDocuments(
         userId,
-        contractId,
+        contractId as number,
         files,
       );
-
-      res.status(200).json({
-        message: '계약서 업로드 성공',
-        contractDocumentId: result.contractDocumentId,
-      });
+      res.status(201).json(result);
     } catch (error) {
-      next(error);
+      next(error as Error);
     }
   };
 
-  downloadSingleDocument = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  editContractDocuments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { companyId } = req.user!;
-      const { contractDocumentId } = req.params;
+      const userId = Number((req.user as any)?.id ?? 0);
+      const files = (req.files as Express.Multer.File[]) ?? [];
+      const params = req.params as Record<string, unknown>;
+      const body = req.body as Record<string, unknown>;
 
-      const document = await this.contractDocumentsService.getDocumentForDownload(
-        companyId,
-        parseInt(contractDocumentId || '0', 10),
+      const contractIdRaw = Number(params.contractId);
+      const raw =
+        body.deleteDocumentIds ??
+        body.deletedDocumentIds ??
+        body.deleteIds ??
+        body.ids ??
+        body.documentIds ??
+        (body as any)['deleteDocumentIds[]'];
+
+      const deleteIds = parseDeleteIds(raw as any);
+
+      await this.service.editContractDocuments(
+        userId,
+        Number.isFinite(contractIdRaw) ? contractIdRaw : undefined,
+        deleteIds,
+        files,
       );
+      res.status(204).end();
+    } catch (error) {
+      next(error as Error);
+    }
+  };
 
-      res.setHeader('Content-Type', document.fileType);
+  downloadSingleDocument = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const params = req.params as Record<string, unknown>;
+      const id = Number(params.contractDocumentId ?? params.id);
+      if (!Number.isFinite(id)) {
+        res.status(400).json({ message: '잘못된 요청입니다' });
+        return;
+      }
+      const file = await this.service.getDocumentForDownload(id);
+      res.setHeader('Content-Type', file.fileType);
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="${encodeURIComponent(document.fileName)}"`,
+        `attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
       );
-      res.sendFile(document.filePath);
+      res.sendFile(file.filePath, (err) => {
+        if (err) next(err);
+      });
     } catch (error) {
-      next(error);
+      if ((error as any)?.name === 'NotFoundError') {
+        res.status(404).json({ message: '파일을 찾을 수 없습니다.' });
+        return;
+      }
+      next(error as Error);
     }
   };
 
-  downloadMultipleDocuments = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  downloadMultipleDocuments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { companyId } = req.user!;
-      const { contractDocumentIds } = req.body as DownloadContractDocumentsDto;
+      const body = req.body as Record<string, unknown>;
+      const idsInput = body.ids as unknown;
+      const ids: number[] = Array.isArray(idsInput)
+        ? (idsInput as unknown[]).map((v) => Number(v)).filter((n) => Number.isInteger(n))
+        : [];
+      if (!ids.length) {
+        res.status(400).json({ message: '잘못된 요청입니다' });
+        return;
+      }
 
-      const zipBuffer = await this.contractDocumentsService.downloadMultipleDocuments(
-        companyId,
-        contractDocumentIds,
-      );
-
+      const { buffer, fileName } = await this.service.createZipForDocuments(ids);
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', 'attachment; filename="contract-documents.zip"');
-      res.send(zipBuffer);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.end(buffer);
     } catch (error) {
-      next(error);
-    }
-  };
-
-  editContractDocuments = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
-      const { companyId, id: userId } = req.user!;
-      const { contractId } = req.params;
-      const { deleteDocumentIds } = req.body as EditContractDocumentsDto;
-      const files = req.files as Express.Multer.File[] | undefined;
-
-      await this.contractDocumentsService.editContractDocuments(
-        companyId,
-        userId,
-        parseInt(contractId || '0', 10),
-        deleteDocumentIds,
-        files,
-      );
-
-      res.status(200).json({ message: '계약서 수정 성공' });
-    } catch (error) {
-      next(error);
+      next(error as Error);
     }
   };
 }
