@@ -3,343 +3,171 @@ import { PrismaClient } from '@prisma/client';
 import { isAuthenticated } from '../middlewares/passport.middlewares';
 import validateDto from '../common/utils/validate.dto';
 import upload from '../middlewares/upload.middleware';
-import ContractDocumentsController from './controller';
-import ContractDocumentsService from './service';
+
 import ContractDocumentsRepository from './repository';
+import ContractDocumentsService from './service';
+import ContractDocumentsController from './controller';
+
 import GetContractDocumentsDto from './dto/get-contract-documents.dto';
 import UploadContractDocumentDto from './dto/upload-contract-document.dto';
 import DownloadContractDocumentsDto from './dto/download-contract-documents.dto';
+import EditContractDocumentsDto from './dto/edit-contract-documents.dto';
+
+/** 타입 문제로 미들웨어 import 에러가 났던 지점 → 파일 안에서 간단히 정의 */
+const normalizeContractIdInBody = (req: any, _res: any, next: any) => {
+  const toNum = (v: unknown): number | undefined => {
+    if (v == null) return undefined;
+    const n = Number(v as any);
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const params = (req.params ?? {}) as Record<string, unknown>;
+  const query = (req.query ?? {}) as Record<string, unknown>;
+
+  // 자주 오는 모든 키 수집
+  const candidates: unknown[] = [
+    body.contractId,
+    body.selectedContractId,
+    body.selectedDealId,
+    body.dealId,
+    body.deal_id,
+    body.contract_id,
+    body.contract,
+    body.id,
+    query.contractId,
+    query.id,
+    params.contractId,
+    req.header?.('x-contract-id'),
+  ];
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    const n = toNum(candidates[i]);
+    if (typeof n === 'number') {
+      (req.body as any).contractId = n;
+      break;
+    }
+  }
+
+  // 문자열에서 [차량번호]나 숫자만 있는 값으로 역추정
+  if (typeof (req.body as any).contractId !== 'number') {
+    const strings: string[] = [];
+    Object.values(body).forEach((v) => {
+      if (typeof v === 'string') strings.push(v);
+    });
+    const numFromText = strings
+      .flatMap((s) => s.match(/\d+/g) ?? [])
+      .map((t) => Number(t))
+      .find((n) => Number.isInteger(n));
+    if (Number.isInteger(numFromText)) (req.body as any).contractId = numFromText;
+  }
+
+  next();
+};
+
+const stripUnknownFormKeys = (req: any, _res: any, next: any) => {
+  const allow = new Set([
+    'contractId',
+    'files',
+    'file',
+    'documents',
+    'files[]',
+    'file[]',
+    'documents[]',
+    'deleteDocumentIds',
+    'deletedDocumentIds',
+    'deleteIds',
+    'ids',
+    'documentIds',
+    'deleteDocumentIds[]',
+  ]);
+  if (req.body && typeof req.body === 'object') {
+    const keys = Object.keys(req.body);
+    for (let i = 0; i < keys.length; i += 1) {
+      const k = keys[i]!;
+      if (!allow.has(k)) delete (req.body as any)[k];
+    }
+  }
+  next();
+};
+
+const debugPrintForm = (req: any, _res: any, next: any) => {
+  const body = req.body ?? {};
+  const files = Array.isArray(req.files)
+    ? req.files.map((f: any) => ({
+        field: f.fieldname,
+        name: f.originalname,
+        size: f.size,
+        path: f.path,
+      }))
+    : req.files;
+  console.log('[CDOC] url=', req.originalUrl);
+  console.log('[CDOC] bodyKeys=', Object.keys(body));
+  console.log('[CDOC] body.contractId=', body.contractId);
+  console.log('[CDOC] files=', files);
+  next();
+};
 
 const createContractDocumentsRouter = (prisma: PrismaClient) => {
   const router = Router();
 
-  // 의존성 주입
-  const contractDocumentsRepository = new ContractDocumentsRepository(prisma);
-  const contractDocumentsService = new ContractDocumentsService(contractDocumentsRepository);
-  const contractDocumentsController = new ContractDocumentsController(contractDocumentsService);
+  const repository = new ContractDocumentsRepository(prisma);
+  const service = new ContractDocumentsService(repository);
+  const controller = new ContractDocumentsController(service);
 
-  /**
-   * @swagger
-   * /contractDocuments:
-   *   get:
-   *     tags:
-   *       - ContractDocuments
-   *     summary: 계약서 목록 조회
-   *     description: 등록된 계약서 목록 조회
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: query
-   *         name: page
-   *         schema:
-   *           type: integer
-   *           default: 1
-   *         description: 페이지 번호
-   *       - in: query
-   *         name: pageSize
-   *         schema:
-   *           type: integer
-   *           default: 8
-   *         description: 페이지당 아이템 수
-   *       - in: query
-   *         name: searchBy
-   *         schema:
-   *           type: string
-   *           enum: [contractName, userName]
-   *         description: 검색 기준
-   *       - in: query
-   *         name: keyword
-   *         schema:
-   *           type: string
-   *         description: 검색 키워드
-   *     responses:
-   *       200:
-   *         description: 계약서 목록 조회 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 currentPage:
-   *                   type: integer
-   *                 totalPages:
-   *                   type: integer
-   *                 totalItemCount:
-   *                   type: integer
-   *                 data:
-   *                   type: array
-   *                   items:
-   *                     type: object
-   *                     properties:
-   *                       id:
-   *                         type: integer
-   *                       contractName:
-   *                         type: string
-   *                       resolutionDate:
-   *                         type: string
-   *                         format: date
-   *                       documentsCount:
-   *                         type: integer
-   *                       manager:
-   *                         type: string
-   *                       carNumber:
-   *                         type: string
-   *                       documents:
-   *                         type: array
-   *                         items:
-   *                           type: object
-   *                           properties:
-   *                             id:
-   *                               type: integer
-   *                             fileName:
-   *                               type: string
-   *       401:
-   *         description: 인증이 필요합니다
-   */
-
-  // 계약서 목록 조회
+  // 목록(문서수/담당자 포함)
   router.get(
     '/',
     isAuthenticated,
     validateDto(GetContractDocumentsDto),
-    contractDocumentsController.getContractDocuments,
+    controller.getContractDocuments,
   );
 
-  /**
-   * @swagger
-   * /contractDocuments/upload:
-   *   post:
-   *     tags:
-   *       - ContractDocuments
-   *     summary: 계약서 업로드
-   *     description: 계약서 파일 업로드 (최대 10개, 각 파일 최대 10MB)
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         multipart/form-data:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - contractId
-   *               - files
-   *             properties:
-   *               contractId:
-   *                 type: integer
-   *                 description: 계약 ID
-   *                 example: 1
-   *               files:
-   *                 type: array
-   *                 items:
-   *                   type: string
-   *                   format: binary
-   *                 maxItems: 10
-   *                 description: 업로드할 파일들 (최대 10개, 각 10MB)
-   *     responses:
-   *       200:
-   *         description: 계약서 업로드 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "계약서 업로드 성공"
-   *                 contractDocumentId:
-   *                   type: integer
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "파일이 없습니다"
-   *       401:
-   *         description: 인증이 필요합니다
-   */
-  // 계약서 추가용 계약 목록 조회
-  router.get('/draft', isAuthenticated, contractDocumentsController.getContractsForDraft);
+  // 드롭박스: 보드에 보이는 상태(가격협의/계약서작성중)만
+  router.get('/draft', isAuthenticated, controller.getDraftContractsForDropdown);
 
-  /**
-   * @swagger
-   * /contractDocuments/upload:
-   *   post:
-   *     tags:
-   *       - ContractDocuments
-   *     summary: 계약서 업로드
-   *     description: 계약서 파일 업로드 (최대 10개, 각 파일 최대 10MB)
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         multipart/form-data:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - contractId
-   *               - files
-   *             properties:
-   *               contractId:
-   *                 type: integer
-   *                 description: 계약 ID
-   *                 example: 1
-   *               files:
-   *                 type: array
-   *                 items:
-   *                   type: string
-   *                   format: binary
-   *                 maxItems: 10
-   *                 description: 업로드할 파일들 (최대 10개, 각 10MB)
-   *     responses:
-   *       200:
-   *         description: 계약서 업로드 성공
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "계약서 업로드 성공"
-   *                 contractDocumentId:
-   *                   type: integer
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "파일이 없습니다"
-   *       401:
-   *         description: 인증이 필요합니다
-   */
-  // 계약서 업로드
+  // 업로드(바디 기반) — ❗ 경로는 반드시 '/contractDocuments/upload'
   router.post(
     '/upload',
     isAuthenticated,
-    upload.single('file'), // 최대 10개 파일
-
-    contractDocumentsController.uploadContractDocuments,
+    upload.any(),
+    debugPrintForm,
+    normalizeContractIdInBody,
+    stripUnknownFormKeys,
+    validateDto(UploadContractDocumentDto),
+    controller.uploadContractDocuments,
   );
 
-  /**
-   * @swagger
-   * /contractDocuments/{contractDocumentId}/download:
-   *   get:
-   *     tags:
-   *       - ContractDocuments
-   *     summary: 계약서 다운로드
-   *     description: 단일 계약서 파일 다운로드
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: contractDocumentId
-   *         required: true
-   *         schema:
-   *           type: integer
-   *         description: 다운로드할 계약서 ID
-   *     responses:
-   *       200:
-   *         description: 계약서 다운로드 성공
-   *         content:
-   *           application/octet-stream:
-   *             schema:
-   *               type: string
-   *               format: binary
-   *       401:
-   *         description: 인증이 필요합니다
-   *       404:
-   *         description: 계약서를 찾을 수 없습니다
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "계약서를 찾을 수 없습니다"
-   */
-
-  // 계약서 다운로드
-  router.get(
-    '/:contractDocumentId/download',
+  // 업로드(경로 파라미터 기반)
+  router.post(
+    '/:contractId',
     isAuthenticated,
-    contractDocumentsController.downloadSingleDocument,
+    upload.any(),
+    debugPrintForm,
+    normalizeContractIdInBody,
+    validateDto(UploadContractDocumentDto),
+    controller.uploadContractDocuments,
   );
 
-  /**
-   * @swagger
-   * /contractDocuments/download:
-   *   post:
-   *     tags:
-   *       - ContractDocuments
-   *     summary: 계약서 다중 다운로드
-   *     description: 여러 계약서를 ZIP 파일로 다운로드
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - contractDocumentIds
-   *             properties:
-   *               contractDocumentIds:
-   *                 type: array
-   *                 items:
-   *                   type: integer
-   *                 description: 다운로드할 계약서 ID 목록
-   *                 example: [1, 2, 3]
-   *     responses:
-   *       200:
-   *         description: 계약서 다운로드 성공
-   *         content:
-   *           application/zip:
-   *             schema:
-   *               type: string
-   *               format: binary
-   *       400:
-   *         description: 잘못된 요청
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "계약서 ID 목록이 필요합니다"
-   *       401:
-   *         description: 인증이 필요합니다
-   *       404:
-   *         description: 계약서를 찾을 수 없습니다
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *                   example: "일부 계약서를 찾을 수 없습니다"
-   */
+  // 수정(추가/삭제)
+  router.patch(
+    '/:contractId',
+    isAuthenticated,
+    upload.any(),
+    debugPrintForm,
+    validateDto(EditContractDocumentsDto),
+    controller.editContractDocuments,
+  );
 
-  // 여러 계약서 다운로드
+  // 단일 다운로드
+  router.get('/:contractDocumentId/download', isAuthenticated, controller.downloadSingleDocument);
+
+  // 다중 다운로드
   router.post(
     '/download',
     isAuthenticated,
     validateDto(DownloadContractDocumentsDto),
-    contractDocumentsController.downloadMultipleDocuments,
+    controller.downloadMultipleDocuments,
   );
 
   return router;

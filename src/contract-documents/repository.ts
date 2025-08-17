@@ -1,61 +1,61 @@
-import { PrismaClient, ContractDocument, Prisma } from '@prisma/client';
+/* eslint-disable */
+import {
+  PrismaClient,
+  Prisma,
+  ContractDocument,
+  ContractStatus as PrismaContractStatus,
+} from '@prisma/client';
+import * as path from 'path';
+import { toUtf8Filename, sanitizeFilename } from '../common/utils/filename';
 
-interface ContractWithCustomer {
-  id: number;
-  contractDate: Date | null;
-  car: {
-    carNumber: string;
+/** 목록/집계에서 쓰는 리턴 타입 (relations 포함) */
+export interface ContractDocumentWithRelations extends ContractDocument {
+  contract: {
+    id: number;
+    contractDate: Date | null;
+    user: { name: string };
+    car: { carNumber: string };
+    customer: { email: string; name: string } | null;
   };
-  customer: {
-    email: string;
-    name: string;
-  } | null;
 }
 
-interface ContractForDraft {
-  id: number;
-  car: {
-    carNumber: string;
-    model: string; // Car 스키마의 model 필드 사용
+/** 업로드 자동 대상 결정을 위한 드래프트 행 */
+export type DraftContractRow = Prisma.ContractGetPayload<{
+  select: {
+    id: true;
+    userId: true;
+    updatedAt: true;
+    car: { select: { carNumber: true; model: true } };
+    customer: { select: { name: true } };
   };
-  customer: {
-    name: string;
-  } | null;
-}
+}>;
 
 export default class ContractDocumentsRepository {
-  // eslint-disable-next-line no-empty-function
   constructor(private readonly prisma: PrismaClient) {}
 
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 목록 조회(페이지네이션 + 검색)
+  // ────────────────────────────────────────────────────────────────────────────────
   async findContractDocuments(
     companyId: number,
     page: number,
     pageSize: number,
     keyword?: string,
-    searchBy?: string,
-  ): Promise<{ documents: any[]; total: number }> {
+    searchBy?: string, // 'contractName' | 'userName' | 'carNumber'
+  ): Promise<{ documents: ContractDocumentWithRelations[]; total: number }> {
     let where: Prisma.ContractDocumentWhereInput = {
       deletedAt: null,
-      contract: {
-        companyId,
-        deletedAt: null,
-      },
+      contract: { companyId, deletedAt: null },
     };
 
-    // 검색 조건 추가
-    if (keyword && typeof keyword === 'string' && keyword.trim() && searchBy) {
-      const trimmedKeyword = keyword.trim();
-
+    const q = (keyword ?? '').trim();
+    if (q && searchBy) {
       if (searchBy === 'contractName') {
+        // 화면 표시용 문서명(documentName)으로 검색
         where = {
           deletedAt: null,
-          documentName: {
-            contains: trimmedKeyword,
-          },
-          contract: {
-            companyId,
-            deletedAt: null,
-          },
+          documentName: { contains: q },
+          contract: { companyId, deletedAt: null },
         };
       } else if (searchBy === 'userName') {
         where = {
@@ -63,11 +63,7 @@ export default class ContractDocumentsRepository {
           contract: {
             companyId,
             deletedAt: null,
-            user: {
-              name: {
-                contains: trimmedKeyword,
-              },
-            },
+            user: { name: { contains: q } },
           },
         };
       } else if (searchBy === 'carNumber') {
@@ -76,11 +72,7 @@ export default class ContractDocumentsRepository {
           contract: {
             companyId,
             deletedAt: null,
-            car: {
-              carNumber: {
-                contains: trimmedKeyword,
-              },
-            },
+            car: { carNumber: { contains: q } },
           },
         };
       }
@@ -92,211 +84,155 @@ export default class ContractDocumentsRepository {
         include: {
           contract: {
             include: {
-              user: {
-                select: {
-                  name: true,
-                },
-              },
-              car: {
-                select: {
-                  carNumber: true,
-                },
-              },
-              customer: {
-                select: {
-                  email: true,
-                  name: true,
-                },
-              },
+              user: { select: { name: true } },
+              car: { select: { carNumber: true } },
+              customer: { select: { email: true, name: true } },
             },
           },
         },
         skip: (page - 1) * pageSize,
         take: Number(pageSize),
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: { createdAt: 'desc' },
       }),
       this.prisma.contractDocument.count({ where }),
     ]);
 
-    return { documents, total };
+    return { documents: documents as ContractDocumentWithRelations[], total };
   }
 
-  // ✨ 새로운 메서드: 계약서 추가용 계약 목록 조회
-  async findContractsForDraft(companyId: number): Promise<ContractForDraft[]> {
-    return this.prisma.contract.findMany({
-      where: {
-        companyId,
-        deletedAt: null,
-        // 계약서가 없는 계약들만 조회
-        contractDocuments: {
-          none: {
-            deletedAt: null,
-          },
-        },
-      },
-      include: {
-        car: {
-          select: {
-            carNumber: true,
-            model: true, // Car 스키마의 model 필드 사용
-          },
-        },
-        customer: {
-          select: {
-            name: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-  }
-
-  async findContractById(
-    contractId: number,
-    companyId: number,
-  ): Promise<ContractWithCustomer | null> {
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 계약 단건 조회(회사 스코프)
+  // ────────────────────────────────────────────────────────────────────────────────
+  async findContractById(contractId: number, companyId: number) {
     return this.prisma.contract.findFirst({
-      where: {
-        id: contractId,
-        companyId,
-        deletedAt: null,
-      },
+      where: { id: contractId, companyId, deletedAt: null },
       include: {
-        car: {
-          select: {
-            carNumber: true,
-          },
-        },
-        customer: {
-          select: {
-            email: true,
-            name: true,
-          },
-        },
+        car: { select: { carNumber: true } },
+        customer: { select: { email: true, name: true } },
       },
     });
   }
 
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 계약별 문서 개수
+  // ────────────────────────────────────────────────────────────────────────────────
   async countDocumentsByContract(contractId: number): Promise<number> {
     return this.prisma.contractDocument.count({
-      where: {
-        contractId,
-        deletedAt: null,
-      },
+      where: { contractId, deletedAt: null },
     });
   }
 
-  async createContractDocument(
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 문서 생성(멀티 파일)
+  //  - 화면 표시에 사용할 이름(documentName)은 '원본명 복원 + 정제'
+  //  - 저장 파일명(fileName)은 디스크 저장명(없으면 path/표시명 기반) + 정제
+  // ────────────────────────────────────────────────────────────────────────────────
+  async createContractDocuments(
+    contractId: number,
     userId: number,
-    file: Express.Multer.File,
-  ): Promise<ContractDocument> {
-    return this.prisma.contractDocument.create({
-      data: {
-        documentName: file.originalname,
-        fileName: file.filename,
-        filePath: file.path,
-        fileSize: file.size,
-        fileType: file.mimetype,
-        uploadedBy: userId,
-      },
+    files: Express.Multer.File[],
+  ): Promise<ContractDocument[]> {
+    return this.prisma.$transaction(async (tx) => {
+      const documents = await Promise.all(
+        files.map(async (file) => {
+          const original = file.originalname ?? '';
+          const displayName = sanitizeFilename(toUtf8Filename(original));
+
+          const storedName = sanitizeFilename(
+            file.filename ??
+              (file.path ? path.basename(file.path) : displayName) ??
+              displayName,
+          );
+
+          return tx.contractDocument.create({
+            data: {
+              contractId,
+              documentName: displayName, // 화면 표시용 이름
+              fileName: storedName, // 저장 파일명
+              filePath: file.path,
+              fileSize: file.size,
+              fileType: file.mimetype,
+              uploadedBy: userId, // 스키마에 맞춰 필드명 사용
+            },
+          });
+        }),
+      );
+
+      return documents;
     });
   }
 
-  async findDocumentById(documentId: number, companyId: number): Promise<ContractDocument | null> {
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 문서 단건 조회(회사 스코프)
+  // ────────────────────────────────────────────────────────────────────────────────
+  async findDocumentById(
+    documentId: number,
+    companyId: number,
+  ): Promise<ContractDocument | null> {
     return this.prisma.contractDocument.findFirst({
       where: {
         id: documentId,
         deletedAt: null,
-        contract: {
-          companyId,
-          deletedAt: null,
-        },
+        contract: { companyId, deletedAt: null },
       },
     });
   }
 
-  async findDocumentsByIds(documentIds: number[], companyId: number): Promise<ContractDocument[]> {
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 문서 여러 개 조회(회사 스코프) – 삭제/ZIP 생성 등에 사용
+  // ────────────────────────────────────────────────────────────────────────────────
+  async findDocumentsByIds(ids: number[], companyId: number) {
     return this.prisma.contractDocument.findMany({
       where: {
-        id: {
-          in: documentIds,
-        },
+        id: { in: ids },
         deletedAt: null,
-        contract: {
-          companyId,
-          deletedAt: null,
-        },
+        contract: { companyId },
       },
+      select: { id: true, contractId: true, filePath: true },
     });
   }
 
-  async deleteDocuments(documentIds: number[]): Promise<void> {
-    await this.prisma.contractDocument.updateMany({
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 업로드 대상 드래프트 목록(가장 최근순)
+  // ────────────────────────────────────────────────────────────────────────────────
+  async findDraftContracts(companyId: number): Promise<DraftContractRow[]> {
+    return this.prisma.contract.findMany({
       where: {
-        id: {
-          in: documentIds,
-        },
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-  }
-  // ✨ 새로운 메서드들: 계약 API 통합용
-
-  /**
-   * 계약서들을 특정 계약에 연결
-   */
-  async attachDocumentsToContract(contractId: number, documentIds: number[]): Promise<void> {
-    await this.prisma.contractDocument.updateMany({
-      where: {
-        id: {
-          in: documentIds,
-        },
-      },
-      data: {
-        contractId,
-      },
-    });
-  }
-
-  /**
-   * 계약서 파일명 업데이트
-   */
-  async updateDocumentFileName(documentId: number, fileName: string): Promise<void> {
-    await this.prisma.contractDocument.update({
-      where: {
-        id: documentId,
-      },
-      data: {
-        fileName,
-      },
-    });
-  }
-
-  /**
-   * 특정 계약에 속한 계약서들 조회
-   */
-  async findDocumentsByContractId(
-    contractId: number,
-    companyId: number,
-  ): Promise<ContractDocument[]> {
-    return this.prisma.contractDocument.findMany({
-      where: {
-        contractId,
+        companyId,
         deletedAt: null,
-        contract: {
-          companyId,
-          deletedAt: null,
-        },
+        status: PrismaContractStatus.CONTRACT_DRAFT,
       },
-      orderBy: {
-        createdAt: 'desc',
+      select: {
+        id: true,
+        userId: true,
+        updatedAt: true,
+        car: { select: { carNumber: true, model: true } },
+        customer: { select: { name: true } },
       },
+      orderBy: { updatedAt: 'desc' },
     });
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────────
+  // 소프트 삭제 (deletedAt 세팅) – 회사 스코프 검증 포함
+  // ────────────────────────────────────────────────────────────────────────────────
+  async deleteDocuments(ids: number[], companyId: number): Promise<number> {
+    if (!ids.length) return 0;
+
+    // 회사 소속 & 미삭제인 것만 허용
+    const allowed = await this.prisma.contractDocument.findMany({
+      where: { id: { in: ids }, deletedAt: null, contract: { companyId } },
+      select: { id: true },
+    });
+
+    const allowedIds = allowed.map((d) => d.id);
+    if (!allowedIds.length) return 0;
+
+    const result = await this.prisma.contractDocument.updateMany({
+      where: { id: { in: allowedIds }, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+
+    return result.count;
   }
 }

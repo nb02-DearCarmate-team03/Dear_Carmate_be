@@ -3,31 +3,53 @@ import { ContractDocument } from '@prisma/client';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import archiver from 'archiver';
-import { Readable } from 'stream';
-import ContractDocumentsRepository from './repository';
+import ContractDocumentsRepository, { DraftContractRow } from './repository';
 import GetContractDocumentsDto from './dto/get-contract-documents.dto';
 import EmailService from '../common/email.service';
 import { NotFoundError } from '../common/errors/not-found-error';
 import { BadRequestError } from '../common/errors/bad-request-error';
 
+/** ---------- 헬퍼(클래스 밖) ---------- */
+
+const trimOrEmpty = (v?: string | null): string => (typeof v === 'string' ? v.trim() : '');
+
+const pickName = (documentName?: string | null, fileName?: string | null, fallback = ''): string => {
+  const a = trimOrEmpty(documentName);
+  if (a) return a;
+  const b = trimOrEmpty(fileName);
+  if (b) return b;
+  return fallback;
+};
+
+const toDateString = (d: Date | null | undefined): string => {
+  if (!(d instanceof Date)) return '';
+  const iso = d.toISOString();
+  const i = iso.indexOf('T');
+  return i >= 0 ? iso.slice(0, i) : iso;
+};
+
+const buildLabel = (r: DraftContractRow): string => {
+  const carNumber = r.car?.carNumber ?? '';
+  const model = r.car?.model ?? '';
+  const name = r.customer?.name ?? '';
+  const parts: string[] = [];
+  if (carNumber) parts.push(`[${carNumber}]`);
+  if (name) parts.push(name);
+  if (model) parts.push(model);
+  return parts.join(' ').trim();
+};
+
 interface ContractDocumentWithRelations extends ContractDocument {
   contract: {
     id: number;
     contractDate: Date | null;
-    user: {
-      name: string;
-    };
-    car: {
-      carNumber: string;
-    };
-    customer: {
-      email: string;
-      name: string;
-    };
-  };
+    user: { name: string } | null;
+    car: { carNumber: string } | null;
+    customer: { email: string | null; name: string | null } | null;
+  } | null;
 }
 
-interface Document {
+interface DocumentListItem {
   id: number;
   fileName: string;
 }
@@ -39,7 +61,7 @@ interface ContractDocumentListItem {
   documentsCount: number;
   manager: string;
   carNumber: string;
-  documents: Document[];
+  documents: DocumentListItem[];
 }
 
 interface PaginatedResult {
@@ -49,30 +71,26 @@ interface PaginatedResult {
   data: ContractDocumentListItem[];
 }
 
-// ✨ 새로운 인터페이스: 계약서 추가용 계약 목록
-interface ContractForDraftItem {
-  id: number;
-  data: string;
-}
+/** ---------- 서비스 구현 ---------- */
 
 export default class ContractDocumentsService {
   private readonly emailService: EmailService;
+
   private readonly allowedExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.csv'];
+
   private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
+
   private readonly maxFileCount = 10;
 
-  constructor(private readonly contractDocumentsRepository: ContractDocumentsRepository) {
+  constructor(private readonly repo: ContractDocumentsRepository) {
     this.emailService = new EmailService();
   }
 
-  async getContractDocuments(
-    companyId: number,
-    dto: GetContractDocumentsDto,
-  ): Promise<PaginatedResult> {
+  /** 목록 */
+  async getContractDocuments(companyId: number, dto: GetContractDocumentsDto): Promise<PaginatedResult> {
     const { page = 1, pageSize = 8, keyword, searchBy } = dto;
-    const offset = (page - 1) * pageSize;
 
-    const { documents, total } = await this.contractDocumentsRepository.findContractDocuments(
+    const { documents, total } = await this.repo.findContractDocuments(
       companyId,
       page,
       pageSize,
@@ -80,8 +98,8 @@ export default class ContractDocumentsService {
       searchBy,
     );
 
-    const groupedDocuments = this.groupDocumentsByContract(documents);
-    const data = this.formatContractDocumentList(groupedDocuments);
+    const grouped = this.groupByContract(documents as ContractDocumentWithRelations[]);
+    const data = this.formatList(grouped);
 
     return {
       currentPage: page,
@@ -91,282 +109,280 @@ export default class ContractDocumentsService {
     };
   }
 
-  // ✨ 새로운 메서드: 계약서 추가용 계약 목록 조회
-  async getContractsForDraft(companyId: number): Promise<ContractForDraftItem[]> {
-    const contracts = await this.contractDocumentsRepository.findContractsForDraft(companyId);
-
-    return contracts.map((contract) => ({
-      id: contract.id,
-      data: `${contract.car.model} - ${contract.customer?.name || '고객정보없음'}`,
-    }));
-  }
-
+  /** 업로드 */
   async uploadContractDocuments(
     companyId: number,
     userId: number,
-    file: Express.Multer.File,
+    contractId: number,
+    files: Express.Multer.File[],
   ): Promise<{ contractDocumentId: number }> {
-    // 업로드된 파일 경로 추적을 위한 배열
     const uploadedFilePaths: string[] = [];
-    let savedDocument: ContractDocument | null = null;
+    let saved: ContractDocument[] = [];
 
     try {
-      // 파일 유효성 검증
-      this.validateFiles([file]);
+      this.validateFiles(files);
 
-      // 파일이 실제로 저장되었는지 확인
+      const contract = await this.repo.findContractById(contractId, companyId);
+      if (!contract) throw new NotFoundError('계약을 찾을 수 없습니다.');
 
-      try {
-        await fs.access(file.path);
-        uploadedFilePaths.push(file.path);
-      } catch (error) {
-        throw new Error(`파일 저장 실패: ${file.originalname}`);
+      const existing = await this.repo.countDocumentsByContract(contractId);
+      if (existing + files.length > this.maxFileCount) {
+        throw new BadRequestError(`계약서는 최대 ${this.maxFileCount}개까지 업로드 가능합니다.`);
       }
 
-      // 트랜잭션으로 문서 저장
+      // 실제 저장 확인
+      for (const f of files) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await fs.access(f.path);
+          uploadedFilePaths.push(f.path);
+        } catch {
+          throw new Error(`파일 저장 실패: ${f.originalname}`);
+        }
+      }
+
       try {
-        savedDocument = await this.contractDocumentsRepository.createContractDocument(userId, file);
-      } catch (dbError) {
-        // DB 저장 실패 시 파일 시스템에서 파일 삭제
+        saved = await this.repo.createContractDocuments(contractId, userId, files);
+      } catch {
         await this.cleanupFiles(uploadedFilePaths);
         throw new Error('데이터베이스 저장 중 오류가 발생했습니다.');
       }
 
-      // 저장된 문서가 있는지 확인
-      if (!savedDocument) {
+      if (!saved.length || !saved[0]) {
         await this.cleanupFiles(uploadedFilePaths);
         throw new Error('계약 문서 저장에 실패했습니다.');
       }
 
-      // const firstDocument = savedDocuments[0];
-      // if (!firstDocument) {
-      //   await this.cleanupFiles(uploadedFilePaths);
-      //   throw new Error('계약 문서 저장에 실패했습니다.');
-      //
-
-      // // 이메일 발송 (실패해도 롤백하지 않음 - 이메일은 부가 기능)
-      // if (contract.customer?.email) {
-      //   try {
-      //     await this.sendContractEmail(contract, files);
-      //   } catch (emailError) {
-      //     console.error('이메일 발송 실패:', emailError);
-      //     // 이메일 실패는 무시하고 진행
-      //   }
-      // }
-
-      return { contractDocumentId: savedDocument.id };
-    } catch (error) {
-      // 오류 발생 시 업로드된 파일들 정리
-      if (uploadedFilePaths.length > 0) {
-        await this.cleanupFiles(uploadedFilePaths);
+      // 이메일(부가 기능)
+      if (contract.customer?.email) {
+        try {
+          await this.sendContractEmail(contract as any, files);
+        } catch (e) {
+          // 이메일 실패는 무시
+          // eslint-disable-next-line no-console
+          console.error('이메일 발송 실패:', e);
+        }
       }
 
-      // 만약 DB에 일부 저장되었다면 삭제 처리
-      // if (savedDocuments.length > 0) {
-      //   const documentIds = savedDocuments.map((doc) => doc.id);
-      //   try {
-      //     await this.contractDocumentsRepository.deleteDocuments(documentIds);
-      //   } catch (rollbackError) {
-      //     console.error('데이터베이스 롤백 실패:', rollbackError);
-      //   }
-      // }
-
-      throw error;
+      return { contractDocumentId: saved[0].id };
+    } catch (err) {
+      if (uploadedFilePaths.length) await this.cleanupFiles(uploadedFilePaths);
+      if (saved.length) {
+        const ids = saved.map((d) => d.id);
+        try {
+          await this.repo.deleteDocuments(ids, companyId);
+        } catch (rollbackError) {
+          // eslint-disable-next-line no-console
+          console.error('데이터베이스 롤백 실패:', rollbackError);
+        }
+      }
+      throw err;
     }
   }
 
-  // ✨ 새로운 메서드: 계약 API에서 사용할 계약서 관리 메서드들
-  /**
-   * 계약서 파일들을 특정 계약에 연결
-   * 계약 수정 API에서 호출됨
-   */
-  async attachDocumentsToContract(
+  /** 수정(삭제/추가) */
+  async editContractDocuments(
     companyId: number,
+    userId: number,
     contractId: number,
-    documentIds: number[],
+    deleteDocumentIds?: number[],
+    newFiles?: Express.Multer.File[],
   ): Promise<void> {
-    if (!documentIds || documentIds.length === 0) {
-      return;
+    const contract = await this.repo.findContractById(contractId, companyId);
+    if (!contract) throw new NotFoundError('계약을 찾을 수 없습니다.');
+
+    // 삭제
+    const ids = Array.isArray(deleteDocumentIds)
+      ? Array.from(new Set(deleteDocumentIds.filter((n) => Number.isInteger(n) && n > 0)))
+      : [];
+
+    if (ids.length) {
+      const docs = await this.repo.findDocumentsByIds(ids, companyId);
+      const invalid = docs.filter((d) => d.contractId !== contractId);
+      if (invalid.length) throw new BadRequestError('삭제하려는 문서가 해당 계약과 연결되어 있지 않습니다.');
+
+      await Promise.all(docs.map((d) => this.deleteFile(d.filePath)));
+      const deleted = await this.repo.deleteDocuments(ids, companyId);
+      if (deleted === 0) throw new NotFoundError('삭제할 문서를 찾을 수 없습니다.');
     }
 
-    // 계약 존재 확인
-    const contract = await this.contractDocumentsRepository.findContractById(contractId, companyId);
-    if (!contract) {
-      throw new NotFoundError('계약을 찾을 수 없습니다.');
+    // 추가
+    if (newFiles && newFiles.length) {
+      this.validateFiles(newFiles);
+      const current = await this.repo.countDocumentsByContract(contractId);
+      const remain = current - ids.length;
+      if (remain + newFiles.length > this.maxFileCount) {
+        throw new BadRequestError(`계약서는 최대 ${this.maxFileCount}개까지 업로드 가능합니다.`);
+      }
+      await this.repo.createContractDocuments(contractId, userId, newFiles);
     }
-
-    // 문서들이 해당 회사에 속하는지 확인
-    const documents = await this.contractDocumentsRepository.findDocumentsByIds(
-      documentIds,
-      companyId,
-    );
-
-    const foundIds = documents.map((doc) => doc.id);
-    const missingIds = documentIds.filter((id) => !foundIds.includes(id));
-
-    if (missingIds.length > 0) {
-      throw new BadRequestError(`존재하지 않는 계약서 ID: ${missingIds.join(', ')}`);
-    }
-
-    // 문서들을 해당 계약에 연결
-    await this.contractDocumentsRepository.attachDocumentsToContract(contractId, documentIds);
   }
 
-  /**
-   * 계약의 계약서 파일명 업데이트
-   * 계약 수정 API에서 호출됨
-   */
-  async updateContractDocumentFileNames(
+  /** 단일 다운로드용 메타 */
+  async getDocumentForDownload(
     companyId: number,
-    contractId: number,
-    updates: { id: number; fileName?: string }[],
-  ): Promise<void> {
-    if (!updates || updates.length === 0) {
-      return;
+    contractDocumentId: number,
+  ): Promise<{ filePath: string; fileName: string; fileType: string }> {
+    const doc = await this.repo.findDocumentById(contractDocumentId, companyId);
+    if (!doc) throw new NotFoundError('문서를 찾을 수 없습니다.');
+
+    const fileName = pickName((doc as any).documentName, doc.fileName, 'download');
+    const ext = path.extname(doc.fileName ?? fileName).toLowerCase();
+
+    let fileType = 'application/octet-stream';
+    if (ext === '.pdf') fileType = 'application/pdf';
+    else if (ext === '.doc') fileType = 'application/msword';
+    else if (ext === '.docx') fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    else if (ext === '.jpg' || ext === '.jpeg') fileType = 'image/jpeg';
+    else if (ext === '.png') fileType = 'image/png';
+    else if (ext === '.csv') fileType = 'text/csv';
+
+    // 존재 확인
+    try {
+      await fs.access(doc.filePath);
+    } catch {
+      throw new NotFoundError('파일을 찾을 수 없습니다.');
     }
 
-    // 계약 존재 확인
-    const contract = await this.contractDocumentsRepository.findContractById(contractId, companyId);
-    if (!contract) {
-      throw new NotFoundError('계약을 찾을 수 없습니다.');
+    return { filePath: doc.filePath, fileName, fileType };
+  }
+
+  /** ZIP */
+  async downloadMultipleDocuments(companyId: number, ids: number[]): Promise<Buffer> {
+    if (!ids?.length) throw new BadRequestError('다운로드할 문서를 선택해주세요.');
+
+    const docs = await this.repo.findDocumentsByIds(ids, companyId);
+    if (!docs.length) throw new NotFoundError('문서를 찾을 수 없습니다.');
+
+    const valid: ContractDocument[] = [];
+    for (const d of docs) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await fs.access(d.filePath);
+        valid.push(d as any);
+      } catch {
+        // eslint-disable-next-line no-console
+        console.error(`파일을 찾을 수 없음: ${d.filePath}`);
+      }
     }
+    if (!valid.length) throw new NotFoundError('다운로드 가능한 파일이 없습니다.');
 
-    const documentIds = updates.map((u) => u.id);
-    const documents = await this.contractDocumentsRepository.findDocumentsByIds(
-      documentIds,
-      companyId,
-    );
+    return this.createZipFile(valid);
+  }
 
-    // 모든 문서가 해당 계약에 속하는지 확인
-    const invalidDocs = documents.filter((doc) => doc.contractId !== contractId);
-    if (invalidDocs.length > 0) {
-      throw new BadRequestError('일부 계약서가 해당 계약에 속하지 않습니다.');
-    }
+  /** 드래프트 라벨 목록 (프런트 드롭다운) */
+  async getDraftContracts(companyId: number) {
+    const rows = await this.repo.findDraftContracts(companyId);
+    return rows.map((r) => ({ id: r.id, name: buildLabel(r) }));
+  }
 
-    // 파일명 업데이트
-    for (const update of updates) {
-      if (update.fileName) {
-        await this.contractDocumentsRepository.updateDocumentFileName(update.id, update.fileName);
+  /** 동일하지만 data 키를 쓰는 스펙 */
+  async getDraftContractsForDropdown(companyId: number): Promise<Array<{ id: number; data: string }>> {
+    const rows = await this.repo.findDraftContracts(companyId);
+    return rows.map((r) => ({ id: r.id, data: buildLabel(r) }));
+  }
+
+  /** 드래프트 자동 선택 후보 */
+  async resolveContractIdForUpload(companyId: number, userId: number): Promise<number | null> {
+    const drafts = await this.repo.findDraftContracts(companyId);
+    if (!Array.isArray(drafts) || drafts.length === 0) return null;
+
+    const mine = drafts.filter((d) => d.userId === userId);
+    if (mine.length >= 1) return mine[0]?.id ?? null;
+
+    return drafts[0]?.id ?? null;
+  }
+
+  /** ---------------- 내부 유틸 ---------------- */
+
+  private validateFiles(files: Express.Multer.File[]): void {
+    for (const f of files) {
+      const ext = path.extname(f.originalname).toLowerCase();
+      if (!this.allowedExtensions.includes(ext)) {
+        throw new BadRequestError(`허용되지 않은 파일 형식입니다: ${ext}`);
+      }
+      if (f.size > this.maxFileSize) {
+        throw new BadRequestError(`파일 크기는 10MB를 초과할 수 없습니다: ${f.originalname}`);
       }
     }
   }
 
-  /**
-   * 계약에 속한 모든 계약서 조회 (계약 API용)
-   */
-  async getContractDocumentsByContractId(
-    companyId: number,
-    contractId: number,
-  ): Promise<{ id: number; fileName: string }[]> {
-    const documents = await this.contractDocumentsRepository.findDocumentsByContractId(
-      contractId,
-      companyId,
-    );
-    return documents.map((doc) => ({
-      id: doc.id,
-      fileName: doc.fileName,
-    }));
-  }
-
-  // 파일 정리를 위한 헬퍼 메서드 추가
   private async cleanupFiles(filePaths: string[]): Promise<void> {
     const errors: Error[] = [];
-
-    for (const filePath of filePaths) {
+    for (const p of filePaths) {
       try {
-        await fs.unlink(filePath);
-        console.log(`파일 삭제 완료: ${filePath}`);
-      } catch (error) {
-        console.error(`파일 삭제 실패: ${filePath}`, error);
-        errors.push(error as Error);
+        // eslint-disable-next-line no-await-in-loop
+        await fs.unlink(p);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(`파일 삭제 실패: ${p}`, e);
+        errors.push(e as Error);
       }
     }
-
-    if (errors.length > 0) {
+    if (errors.length) {
+      // eslint-disable-next-line no-console
       console.error(`${errors.length}개의 파일 삭제 실패`);
     }
   }
 
-  private validateFiles(files: Express.Multer.File[]): void {
-    for (const file of files) {
-      // 확장자 검증
-      const ext = path.extname(file.originalname).toLowerCase();
-      if (!this.allowedExtensions.includes(ext)) {
-        throw new BadRequestError(`허용되지 않은 파일 형식입니다: ${ext}`);
-      }
-
-      // 파일 크기 검증
-      if (file.size > this.maxFileSize) {
-        throw new BadRequestError(`파일 크기는 10MB를 초과할 수 없습니다: ${file.originalname}`);
-      }
+  private groupByContract(docs: ContractDocumentWithRelations[]) {
+    const m = new Map<number, ContractDocumentWithRelations[]>();
+    for (const doc of docs) {
+      const id = doc.contractId;
+      const arr = m.get(id);
+      if (arr) arr.push(doc);
+      else m.set(id, [doc]);
     }
+    return m;
   }
 
-  private groupDocumentsByContract(
-    documents: ContractDocumentWithRelations[],
-  ): Map<number, ContractDocumentWithRelations[]> {
-    const grouped = new Map<number, ContractDocumentWithRelations[]>();
+  private formatList(grouped: Map<number, ContractDocumentWithRelations[]>): ContractDocumentListItem[] {
+    const out: ContractDocumentListItem[] = [];
 
-    for (const doc of documents) {
-      const { contractId } = doc;
-      if (!contractId) {
-        continue; // 계약 ID가 없는 문서는 무시
-      }
-      if (!grouped.has(contractId)) {
-        grouped.set(contractId, []);
-      }
-      grouped.get(contractId)!.push(doc);
-    }
+    for (const [contractId, docs] of grouped) {
+      if (!docs || docs.length === 0) continue;
 
-    return grouped;
-  }
+      const first = docs[0]!;
+      const contractName = pickName((first as any).documentName, first.fileName, `계약서_${contractId}`);
+      const resolutionDate = toDateString(first.contract?.contractDate);
 
-  private formatContractDocumentList(
-    groupedDocuments: Map<number, ContractDocumentWithRelations[]>,
-  ): ContractDocumentListItem[] {
-    const result: ContractDocumentListItem[] = [];
-
-    for (const [contractId, docs] of groupedDocuments) {
-      const firstDoc = docs[0];
-      if (!firstDoc) {
-        continue; // 또는 throw new Error('문서 없음');
-      }
-      const contractName = firstDoc.documentName || `계약서_${contractId}`;
-      const documents = docs.map((doc) => ({
-        id: doc.id,
-        fileName: doc.fileName,
+      const documents = docs.map((d) => ({
+        id: d.id,
+        fileName: pickName((d as any).documentName, d.fileName, ''),
       }));
 
-      result.push({
+      out.push({
         id: contractId,
         contractName,
-        resolutionDate: firstDoc.contract.contractDate?.toISOString().split('T')[0] ?? '', //  null 또는 undefined일 경우 '' 반환
+        resolutionDate,
         documentsCount: docs.length,
-        manager: firstDoc.contract.user.name,
-        carNumber: firstDoc.contract.car.carNumber,
-        documents: documents,
+        manager: trimOrEmpty(first.contract?.user?.name) || '',
+        carNumber: trimOrEmpty(first.contract?.car?.carNumber) || '',
+        documents,
       });
     }
 
-    return result;
+    return out;
   }
 
-  private async createZipFile(documents: ContractDocument[]): Promise<Buffer> {
+  private async createZipFile(docs: ContractDocument[]): Promise<Buffer> {
     const archive = archiver('zip', { zlib: { level: 9 } });
     const chunks: Buffer[] = [];
 
     return new Promise((resolve, reject) => {
-      archive.on('data', (chunk) => chunks.push(chunk));
+      archive.on('data', (c) => chunks.push(c));
       archive.on('end', () => resolve(Buffer.concat(chunks)));
       archive.on('error', reject);
 
       (async () => {
-        for (const doc of documents) {
+        for (const d of docs) {
           try {
-            const fileBuffer = await fs.readFile(doc.filePath);
-            archive.append(fileBuffer, { name: doc.fileName });
-          } catch (error) {
-            console.error(`파일 읽기 실패: ${doc.filePath}`, error);
+            // eslint-disable-next-line no-await-in-loop
+            const buf = await fs.readFile(d.filePath);
+            archive.append(buf, { name: d.fileName });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(`파일 읽기 실패: ${d.filePath}`, e);
           }
         }
         await archive.finalize();
@@ -377,8 +393,9 @@ export default class ContractDocumentsService {
   private async deleteFile(filePath: string): Promise<void> {
     try {
       await fs.unlink(filePath);
-    } catch (error) {
-      console.error(`파일 삭제 실패: ${filePath}`, error);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(`파일 삭제 실패: ${filePath}`, e);
     }
   }
 
@@ -388,99 +405,10 @@ export default class ContractDocumentsService {
       <h2>안녕하세요, ${contract.customer.name}님</h2>
       <p>${contract.car.carNumber} 차량의 계약서가 등록되었습니다.</p>
       <p>첨부된 계약서를 확인해주세요.</p>
-      <br>
+      <br/>
       <p>감사합니다.</p>
     `;
-
-    const attachments = files.map((file) => ({
-      filename: file.originalname,
-      path: file.path,
-    }));
-
+    const attachments = files.map((f) => ({ filename: f.originalname, path: f.path }));
     await this.emailService.sendEmail(contract.customer.email, subject, html, attachments);
-  }
-  async getDocumentForDownload(
-    companyId: number,
-    contractDocumentId: number,
-  ): Promise<{ filePath: string; fileName: string; fileType: string }> {
-    const document = await this.contractDocumentsRepository.findDocumentById(
-      contractDocumentId,
-      companyId,
-    );
-
-    if (!document) {
-      throw new NotFoundError('문서를 찾을 수 없습니다.');
-    }
-
-    // 파일 존재 여부 확인
-    try {
-      await fs.access(document.filePath);
-    } catch (error) {
-      throw new NotFoundError('파일을 찾을 수 없습니다.');
-    }
-
-    // MIME 타입 결정
-    const ext = path.extname(document.fileName).toLowerCase();
-    let fileType = 'application/octet-stream';
-
-    switch (ext) {
-      case '.pdf':
-        fileType = 'application/pdf';
-        break;
-      case '.doc':
-        fileType = 'application/msword';
-        break;
-      case '.docx':
-        fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        break;
-      case '.jpg':
-      case '.jpeg':
-        fileType = 'image/jpeg';
-        break;
-      case '.png':
-        fileType = 'image/png';
-        break;
-    }
-
-    return {
-      filePath: document.filePath,
-      fileName: document.fileName,
-      fileType,
-    };
-  }
-
-  async downloadMultipleDocuments(
-    companyId: number,
-    contractDocumentIds: number[],
-  ): Promise<Buffer> {
-    if (!contractDocumentIds || contractDocumentIds.length === 0) {
-      throw new BadRequestError('다운로드할 문서를 선택해주세요.');
-    }
-
-    const documents = await this.contractDocumentsRepository.findDocumentsByIds(
-      contractDocumentIds,
-      companyId,
-    );
-
-    if (documents.length === 0) {
-      throw new NotFoundError('문서를 찾을 수 없습니다.');
-    }
-
-    // 파일들이 실제로 존재하는지 확인
-    const validDocuments = [];
-    for (const doc of documents) {
-      try {
-        await fs.access(doc.filePath);
-        validDocuments.push(doc);
-      } catch (error) {
-        console.error(`파일을 찾을 수 없음: ${doc.filePath}`);
-      }
-    }
-
-    if (validDocuments.length === 0) {
-      throw new NotFoundError('다운로드 가능한 파일이 없습니다.');
-    }
-
-    return await this.createZipFile(validDocuments);
   }
 }

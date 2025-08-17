@@ -10,7 +10,10 @@ const swaggerOptions: Options = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT || 4000}`,
+        url:
+          process.env.NODE_ENV === 'production'
+            ? process.env.RENDER_EXTERNAL_URL || 'https://your-app.onrender.com'
+            : `http://localhost:${process.env.PORT || 4000}`,
       },
     ],
   },
