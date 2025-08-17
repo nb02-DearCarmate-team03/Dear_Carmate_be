@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { plainToInstance } from 'class-transformer';
 import CompanyService from './service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { CompanyListQueryDto } from './dto/get-companies.dto';
@@ -26,8 +27,7 @@ export default class CompanyController {
 
   getCompanyList = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const query: CompanyListQueryDto = req.query as unknown as CompanyListQueryDto;
-
+      const query = plainToInstance(CompanyListQueryDto, req.query);
       const companyList = await this.companyService.getCompanyList(query);
       res.status(200).json(companyList);
     } catch (error) {
@@ -37,7 +37,7 @@ export default class CompanyController {
 
   getUserList = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const query: UserListQueryDto = req.query as unknown as UserListQueryDto;
+      const query = plainToInstance(UserListQueryDto, req.query);
 
       const userList = await this.companyService.getCompanyUsers(query);
       res.status(200).json(userList);

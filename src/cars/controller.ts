@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { plainToInstance } from 'class-transformer';
 import { AuthRequest } from 'src/middlewares/auth.middleware';
 import { CreateCarDTO } from './dto/create-car.dto';
 import CarService, { CarModelListResponseDto } from './service';
@@ -32,7 +33,7 @@ export default class CarController {
 
   getCarList = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const query: CarListQueryDto = req.query as unknown as CarListQueryDto;
+      const query = plainToInstance(CarListQueryDto, req.query);
       const companyId = req.user?.companyId;
 
       if (!companyId) {

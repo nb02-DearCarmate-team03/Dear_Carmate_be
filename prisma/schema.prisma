@@ -137,11 +137,11 @@ model Contract {
 model ContractDocument {
   id           Int       @id @default(autoincrement())
   contractId   Int?      @map("contract_id")
-  documentName String    @map("document_name") @db.VarChar(255)
-  fileName     String    @map("file_name") @db.VarChar(255)
-  filePath     String    @map("file_path") @db.VarChar(500)
+  documentName String    @map("document_name") @db.Text
+  fileName     String    @map("file_name") @db.Text
+  filePath     String    @map("file_path") @db.Text
   fileSize     Int       @map("file_size")
-  fileType     String    @map("file_type") @db.VarChar(50)
+  fileType     String    @map("file_type") @db.Text
   uploadedBy   Int       @map("uploaded_by")
   createdAt    DateTime  @default(now()) @map("created_at")
   deletedAt    DateTime? @map("deleted_at")

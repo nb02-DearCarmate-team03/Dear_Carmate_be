@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import * as path from 'path';
 import { toUtf8Filename, sanitizeFilename } from '../common/utils/filename';
+import { NotFoundError } from '../common/errors/not-found-error';
 
 /** 목록/집계에서 쓰는 리턴 타입 (relations 포함) */
 export interface ContractDocumentWithRelations extends ContractDocument {
@@ -127,41 +128,48 @@ export default class ContractDocumentsRepository {
   //  - 화면 표시에 사용할 이름(documentName)은 '원본명 복원 + 정제'
   //  - 저장 파일명(fileName)은 디스크 저장명(없으면 path/표시명 기반) + 정제
   // ────────────────────────────────────────────────────────────────────────────────
-  async createContractDocuments(
-    contractId: number,
-    userId: number,
-    files: Express.Multer.File[],
-  ): Promise<ContractDocument[]> {
-    return this.prisma.$transaction(async (tx) => {
-      const documents = await Promise.all(
-        files.map(async (file) => {
-          const original = file.originalname ?? '';
-          const displayName = sanitizeFilename(toUtf8Filename(original));
+async createContractDocuments(
+  contractId: number,
+  userId: number,
+  files: Express.Multer.File[],
+  uploadedFileUrls: string[],
+): Promise<ContractDocument[]> {
+  return this.prisma.$transaction(async (tx) => {
+    const documents = await Promise.all(
+      files.map(async (file, index) => {
+        const fileUrl = uploadedFileUrls[index];
+        const originalName = file.originalname ?? '';
 
-          const storedName = sanitizeFilename(
-            file.filename ??
-              (file.path ? path.basename(file.path) : displayName) ??
-              displayName,
-          );
+        if (!fileUrl) {
+          throw new NotFoundError('파일 URL을 찾을 수 없습니다.');
+        }
 
-          return tx.contractDocument.create({
-            data: {
-              contractId,
-              documentName: displayName, // 화면 표시용 이름
-              fileName: storedName, // 저장 파일명
-              filePath: file.path,
-              fileSize: file.size,
-              fileType: file.mimetype,
-              uploadedBy: userId, // 스키마에 맞춰 필드명 사용
-            },
-          });
-        }),
-      );
+        // URL에서 파일명을 안전하게 추출하는 로직
+        const urlObject = new URL(fileUrl);
+        const urlPath = urlObject.pathname;
+        const encodedFilename = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+        const filename = decodeURIComponent(encodedFilename);
 
-      return documents;
-    });
-  }
+        // Firebase에 저장될 파일명을 안전하게 결정
+        const storedName = filename || originalName || 'unknown_file';
 
+        return tx.contractDocument.create({
+          data: {
+            contractId,
+            documentName: originalName,
+            fileName: storedName,
+            filePath: fileUrl,
+            fileSize: file.size,
+            fileType: file.mimetype,
+            uploadedBy: userId,
+          },
+        });
+      }),
+    );
+
+    return documents;
+  });
+}
   // ────────────────────────────────────────────────────────────────────────────────
   // 문서 단건 조회(회사 스코프)
   // ────────────────────────────────────────────────────────────────────────────────
