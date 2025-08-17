@@ -144,7 +144,7 @@ export default class ContractDocumentsController {
         'Content-Disposition',
         `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
       );
-      res.sendFile(doc.filePath);
+      doc.stream.pipe(res);
     } catch (err) {
       next(err as Error);
     }

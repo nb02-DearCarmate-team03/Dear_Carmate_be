@@ -8,6 +8,10 @@ import GetContractDocumentsDto from './dto/get-contract-documents.dto';
 import EmailService from '../common/email.service';
 import { NotFoundError } from '../common/errors/not-found-error';
 import { BadRequestError } from '../common/errors/bad-request-error';
+import admin from '../common/utils/firebase-admin';
+import { v4 as uuidv4 } from 'uuid';
+import stream from 'stream';
+
 
 /** ---------- 헬퍼(클래스 밖) ---------- */
 
@@ -71,6 +75,68 @@ interface PaginatedResult {
   data: ContractDocumentListItem[];
 }
 
+interface FileDownloadInfo {
+  filePath: string;
+  fileName: string;
+  fileType: string;
+  stream: NodeJS.ReadableStream;
+}
+
+const uploadToFirebase = async (file: Express.Multer.File, contractId: number): Promise<string> => {
+    const bucket = admin.storage().bucket();
+    
+    const fileExtension = file.originalname.split('.').pop();
+    const uniqueFilename = `${uuidv4()}.${fileExtension}`;
+    const filePath = `contracts/${contractId}/${uniqueFilename}`;
+    const fileRef = bucket.file(filePath);
+
+    await new Promise<void>((resolve, reject) => {
+        const readableStream = new stream.PassThrough();
+        readableStream.end(file.buffer);
+
+        const writeStream = fileRef.createWriteStream({
+            metadata: {
+                contentType: file.mimetype,
+            },
+        });
+
+        readableStream.pipe(writeStream)
+            .on('finish', resolve)
+            .on('error', reject);
+    });
+
+    const [url] = await fileRef.getSignedUrl({
+        action: 'read',
+        expires: '03-17-2027',
+    });
+
+    return url;
+};
+
+const cleanupFirebaseFiles = async (fileUrls: string[]): Promise<void> => {
+    const bucket = admin.storage().bucket();
+    for (const url of fileUrls) {
+        if (!url || typeof url !== 'string') {
+            continue;
+        }
+        try {
+            const parsedUrl = new URL(url);
+            const filePath = parsedUrl.pathname.substring(1);
+            const decodedFilePath = decodeURIComponent(filePath);
+            const fileRef = bucket.file(decodedFilePath);
+
+            const [exists] = await fileRef.exists();
+            if (exists) {
+                await fileRef.delete();
+            } else {
+                console.warn('경고: Firebase Storage에 파일이 존재하지 않아 삭제를 건너뜁니다.', decodedFilePath);
+            }
+        } catch (error) {
+            console.error('Firebase 파일 삭제 중 예외 발생:', error);
+        }
+    }
+};
+
 /** ---------- 서비스 구현 ---------- */
 
 export default class ContractDocumentsService {
@@ -108,78 +174,87 @@ export default class ContractDocumentsService {
       data,
     };
   }
-
+  
   /** 업로드 */
-  async uploadContractDocuments(
-    companyId: number,
-    userId: number,
-    contractId: number,
-    files: Express.Multer.File[],
-  ): Promise<{ contractDocumentId: number }> {
-    const uploadedFilePaths: string[] = [];
-    let saved: ContractDocument[] = [];
+async uploadContractDocuments(
+  companyId: number,
+  userId: number,
+  contractId: number,
+  files: Express.Multer.File[],
+): Promise<{ contractDocumentId: number }> {
+  const uploadedFileUrls: string[] = [];
+  let savedDocuments: ContractDocument[] = [];
+
+  try {
+    this.validateFiles(files);
+
+    const contract = await this.repo.findContractById(contractId, companyId);
+    if (!contract) throw new NotFoundError('계약을 찾을 수 없습니다.');
+
+    const existing = await this.repo.countDocumentsByContract(contractId);
+    if (existing + files.length > this.maxFileCount) {
+      throw new BadRequestError(`계약서는 최대 ${this.maxFileCount}개까지 업로드 가능합니다.`);
+    }
+
+    // 1. 파일을 Firebase에 업로드하고 URL을 가져옵니다.
+    for (const f of files) {
+      const fileUrl = await uploadToFirebase(f, contractId);
+      uploadedFileUrls.push(fileUrl);
+    }
+
+    // 2. 데이터베이스에 저장할 파일 메타데이터를 준비합니다.
+    const fileMetadata = files.map((file, index) => ({
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      url: uploadedFileUrls[index],
+    }));
 
     try {
-      this.validateFiles(files);
+    savedDocuments = await this.repo.createContractDocuments(
+        contractId,
+        userId,
+        files,
+        uploadedFileUrls,
+    );
+} catch (dbError) { // 수정된 부분: 오류 객체를 dbError 변수에 저장
+    console.error('데이터베이스 저장 실패 상세 오류:', dbError);
+    
+    // DB 저장 실패 시, Firebase에 업로드된 파일들을 삭제합니다.
+    if (uploadedFileUrls.length) await cleanupFirebaseFiles(uploadedFileUrls);
+    
+    // 이전에 발생한 오류를 다시 던져줍니다.
+    throw new Error('데이터베이스 저장 중 오류가 발생했습니다.');
+}
 
-      const contract = await this.repo.findContractById(contractId, companyId);
-      if (!contract) throw new NotFoundError('계약을 찾을 수 없습니다.');
-
-      const existing = await this.repo.countDocumentsByContract(contractId);
-      if (existing + files.length > this.maxFileCount) {
-        throw new BadRequestError(`계약서는 최대 ${this.maxFileCount}개까지 업로드 가능합니다.`);
-      }
-
-      // 실제 저장 확인
-      for (const f of files) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          await fs.access(f.path);
-          uploadedFilePaths.push(f.path);
-        } catch {
-          throw new Error(`파일 저장 실패: ${f.originalname}`);
-        }
-      }
-
-      try {
-        saved = await this.repo.createContractDocuments(contractId, userId, files);
-      } catch {
-        await this.cleanupFiles(uploadedFilePaths);
-        throw new Error('데이터베이스 저장 중 오류가 발생했습니다.');
-      }
-
-      if (!saved.length || !saved[0]) {
-        await this.cleanupFiles(uploadedFilePaths);
-        throw new Error('계약 문서 저장에 실패했습니다.');
-      }
-
-      // 이메일(부가 기능)
-      if (contract.customer?.email) {
-        try {
-          await this.sendContractEmail(contract as any, files);
-        } catch (e) {
-          // 이메일 실패는 무시
-          // eslint-disable-next-line no-console
-          console.error('이메일 발송 실패:', e);
-        }
-      }
-
-      return { contractDocumentId: saved[0].id };
-    } catch (err) {
-      if (uploadedFilePaths.length) await this.cleanupFiles(uploadedFilePaths);
-      if (saved.length) {
-        const ids = saved.map((d) => d.id);
-        try {
-          await this.repo.deleteDocuments(ids, companyId);
-        } catch (rollbackError) {
-          // eslint-disable-next-line no-console
-          console.error('데이터베이스 롤백 실패:', rollbackError);
-        }
-      }
-      throw err;
+    if (!savedDocuments.length || !savedDocuments[0]) {
+      await cleanupFirebaseFiles(uploadedFileUrls);
+      throw new Error('계약 문서 저장에 실패했습니다.');
     }
-  }
 
+    // 이메일 발송 로직
+    if (contract.customer?.email) {
+      try {
+        await this.sendContractEmail(contract as any, files);
+      } catch (e) {
+        console.error('이메일 발송 실패:', e);
+      }
+    }
+
+    return { contractDocumentId: savedDocuments[0].id };
+  } catch (err) {
+    if (uploadedFileUrls.length) await cleanupFirebaseFiles(uploadedFileUrls);
+    if (savedDocuments.length) {
+      const ids = savedDocuments.map((d) => d.id);
+      try {
+        await this.repo.deleteDocuments(ids, companyId);
+      } catch (rollbackError) {
+        console.error('데이터베이스 롤백 실패:', rollbackError);
+      }
+    }
+    throw err;
+  }
+}
   /** 수정(삭제/추가) */
   async editContractDocuments(
     companyId: number,
@@ -201,10 +276,12 @@ export default class ContractDocumentsService {
       const invalid = docs.filter((d) => d.contractId !== contractId);
       if (invalid.length) throw new BadRequestError('삭제하려는 문서가 해당 계약과 연결되어 있지 않습니다.');
 
-      await Promise.all(docs.map((d) => this.deleteFile(d.filePath)));
+      await cleanupFirebaseFiles(docs.map((d) => d.filePath));
+
       const deleted = await this.repo.deleteDocuments(ids, companyId);
-      if (deleted === 0) throw new NotFoundError('삭제할 문서를 찾을 수 없습니다.');
-    }
+    if (deleted === 0) throw new NotFoundError('삭제할 문서를 찾을 수 없습니다.');
+  }
+    
 
     // 추가
     if (newFiles && newFiles.length) {
@@ -214,7 +291,14 @@ export default class ContractDocumentsService {
       if (remain + newFiles.length > this.maxFileCount) {
         throw new BadRequestError(`계약서는 최대 ${this.maxFileCount}개까지 업로드 가능합니다.`);
       }
-      await this.repo.createContractDocuments(contractId, userId, newFiles);
+      const uploadedFileUrls: string[] = [];
+
+    for (const file of newFiles) {
+      // eslint-disable-next-line no-await-in-loop
+      const fileUrl = await uploadToFirebase(file, contractId);
+      uploadedFileUrls.push(fileUrl);
+    }
+      await this.repo.createContractDocuments(contractId, userId, newFiles, uploadedFileUrls);
     }
   }
 
@@ -222,30 +306,55 @@ export default class ContractDocumentsService {
   async getDocumentForDownload(
     companyId: number,
     contractDocumentId: number,
-  ): Promise<{ filePath: string; fileName: string; fileType: string }> {
+  ): Promise<FileDownloadInfo> {
     const doc = await this.repo.findDocumentById(contractDocumentId, companyId);
     if (!doc) throw new NotFoundError('문서를 찾을 수 없습니다.');
 
-    const fileName = pickName((doc as any).documentName, doc.fileName, 'download');
-    const ext = path.extname(doc.fileName ?? fileName).toLowerCase();
-
-    let fileType = 'application/octet-stream';
-    if (ext === '.pdf') fileType = 'application/pdf';
-    else if (ext === '.doc') fileType = 'application/msword';
-    else if (ext === '.docx') fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    else if (ext === '.jpg' || ext === '.jpeg') fileType = 'image/jpeg';
-    else if (ext === '.png') fileType = 'image/png';
-    else if (ext === '.csv') fileType = 'text/csv';
-
-    // 존재 확인
+  let firebasePath: string;
     try {
-      await fs.access(doc.filePath);
-    } catch {
-      throw new NotFoundError('파일을 찾을 수 없습니다.');
+        const urlObject = new URL(doc.filePath);
+    const pathname = urlObject.pathname;
+    
+    if (pathname.startsWith('/v0/b/')) {
+        // Firebase 일반 URL 형식
+        const pathParts = pathname.split('/o/');
+        if (pathParts.length < 2) throw new Error('유효하지 않은 Firebase URL 형식입니다.');
+        firebasePath = pathParts[1] ?? '';
+    } else {
+        const pathParts = pathname.split('/');
+        if (pathParts.length < 3) throw new Error('유효하지 않은 Cloud Storage URL 형식입니다.');
+        firebasePath = pathParts.slice(2).join('/');
     }
 
-    return { filePath: doc.filePath, fileName, fileType };
+    firebasePath = decodeURIComponent(firebasePath);
+
+  } catch (e) {
+    console.error('URL 파싱 실패:', e);
+    throw new NotFoundError('파일 경로가 유효하지 않습니다.');
   }
+
+  const bucket = admin.storage().bucket();
+  const firebaseFile = bucket.file(firebasePath);
+
+  const [exists] = await firebaseFile.exists();
+  if (!exists) {
+    throw new NotFoundError('Firebase Storage에 파일이 존재하지 않습니다.');
+  }
+
+  const stream = firebaseFile.createReadStream();
+  const fileName = pickName((doc as any).documentName, doc.fileName, 'download');
+  const ext = path.extname(doc.fileName ?? fileName).toLowerCase();
+  
+  let fileType = 'application/octet-stream';
+  if (ext === '.pdf') fileType = 'application/pdf';
+  else if (ext === '.doc') fileType = 'application/msword';
+  else if (ext === '.docx') fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  else if (ext === '.jpg' || ext === '.jpeg') fileType = 'image/jpeg';
+  else if (ext === '.png') fileType = 'image/png';
+  else if (ext === '.csv') fileType = 'text/csv';
+
+  return { filePath: doc.filePath, fileName, fileType, stream };
+}
 
   /** ZIP */
   async downloadMultipleDocuments(companyId: number, ids: number[]): Promise<Buffer> {
@@ -328,10 +437,12 @@ export default class ContractDocumentsService {
   private groupByContract(docs: ContractDocumentWithRelations[]) {
     const m = new Map<number, ContractDocumentWithRelations[]>();
     for (const doc of docs) {
+      if (doc.contractId !== null) {
       const id = doc.contractId;
       const arr = m.get(id);
       if (arr) arr.push(doc);
       else m.set(id, [doc]);
+      }
     }
     return m;
   }
