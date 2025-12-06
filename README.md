@@ -91,36 +91,6 @@
 <h3 align="center"><b> 🤝 Collaboration Tools </b></h3>
 <p align="center"> <img src="https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white" alt="Notion" /> <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" /> <img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" /> </p>
 
-## 팀원별 구현 기능 상세
-
-👤 김슬비
-
-(자신이 개발한 기능에 대한 사진이나 gif 파일 첨부)
-* 계약 API 
-
-👤 김수민
-
-(자신이 개발한 기능에 대한 사진이나 gif 파일 첨부)
-* 인증 API 
-* 유저 API
-
-👤 윤희원
-
-(자신이 개발한 기능에 대한 사진이나 gif 파일 첨부)
-* 차량 API
-* 회사 API 
-
-👤 이종진
-
-(자신이 개발한 기능에 대한 사진이나 gif 파일 첨부)
-* 고객 API
-* 계약서 API 
-
-👤 진성남
-
-(자신이 개발한 기능에 대한 사진이나 gif 파일 첨부)
-* 대시보드 API
-* 이미지 API
 
 ## 파일 구조 
 ```
@@ -273,5 +243,6 @@
 ## 프로젝트 회고록
 
 🔗 [중간 발표 자료](링크)
+
 
 🔗 [최종 발표 자료](링크)
