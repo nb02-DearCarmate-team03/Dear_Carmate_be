@@ -18,6 +18,15 @@ const prisma = new PrismaClient();
 
 const specs = swaggerJsdoc(swaggerOptions);
 
+app.get('/', (req, res) => {
+  // 200 OK 상태 코드와 함께 JSON 응답을 보냅니다.
+  res.status(200).json({
+    status: 'OK',
+    service: 'Dear Carmate Backend Service',
+    message: 'Server is running successfully.',
+  });
+});
+
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 app.use(morgan('dev'));
